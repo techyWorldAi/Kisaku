@@ -1,0 +1,10 @@
+
+/* src/assets/fonts.css */
+
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+@import "tailwindcss";
+/* Define custom font family */
+:root {
+  --font-luxury: 'Playfair Display', serif;
+}
