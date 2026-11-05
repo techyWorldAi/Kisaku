@@ -74,3 +74,4 @@ The customer account can shop and place test orders. Administrator and staff acc
 The sample products, prices, stock, product edits, order updates and orders are illustrative and stored in this browser. Checkout is simulated locally; M-Pesa is not charged and no order is sent to the live backend. Use **Reset demo data** on the login page to clear saved demo orders and restore sample stock and products.
 
 The demo is guarded by Vite's development mode and will not be enabled in production builds. To use the live API locally, remove `VITE_DEMO_MODE=true` from `.env.local` and restart the dev server.
+# Kisaku
