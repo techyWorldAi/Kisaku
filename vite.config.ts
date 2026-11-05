@@ -4,7 +4,9 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/Kisaku/', // <-- Added your GitHub Pages subfolder path
   plugins: [
     tailwindcss(),
-    vue()],
+    vue()
+  ],
 })
