@@ -1,8 +1,8 @@
-import { createRouter, createWebHashHistory } from 'vue-router'; // 1. Changed to createWebHashHistory
+import { createRouter, createWebHashHistory } from 'vue-router';
 import { useAuthStore } from '../store/auth';
 
 const router = createRouter({
-  history: createWebHashHistory('/Kisaku/'), // 2. Updated strategy with your repository base path
+  history: createWebHashHistory('/'), // Updated to root path for custom domain support
   scrollBehavior() {
     // Scroll to top on every route change
     return { top: 0 };
