@@ -1,8 +1,8 @@
-import { createRouter, createWebHashHistory } from 'vue-router';
+import { createRouter, createWebHistory } from 'vue-router'; // 1. Switched to createWebHistory
 import { useAuthStore } from '../store/auth';
 
 const router = createRouter({
-  history: createWebHashHistory('/'), // Updated to root path for custom domain support
+  history: createWebHistory('/'), // 2. Updated to standard root web history
   scrollBehavior() {
     // Scroll to top on every route change
     return { top: 0 };

@@ -4,7 +4,27 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Kisaku</title>
+    <title>testshop</title>
+
+    <!-- Script to catch parameters from 404 redirect and restore clean history state -->
+    <script type="text/javascript">
+      (function(l) {
+        if (l.search[1] === 'p' ) {
+          var s = l.search.slice(1).split('&').reduce(function(q, v) {
+            var p = v.split('=');
+            q[p[0]] = p[1];
+            return q;
+          }, {});
+          if (s.p !== undefined) {
+            window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + (s.p || '') +
+              (s.q ? ('?' + s.q) : '') +
+              l.hash
+            );
+          }
+        }
+      }(window.location));
+    </script>
   </head>
   <body>
     <div id="app"></div>
