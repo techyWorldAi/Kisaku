@@ -15,7 +15,7 @@ import {
   updateDemoOrderStatus,
 } from './demoStore';
 
-const API_BASE_URL = 'https://tshopbackend.onrender.com/api';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://api.fuze.co.ke/api').replace(/\/+$/, '');
 
 // Create axios instance with better configuration
 const api = axios.create({
