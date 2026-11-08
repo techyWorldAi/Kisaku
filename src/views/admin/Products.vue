@@ -10,12 +10,11 @@
               to="/admin/dashboard" 
               class="flex items-center space-x-3 group"
             >
-              <div class="w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
-                <span class="text-white font-black text-sm">K</span>
-              </div>
-              <span class="text-xl font-black text-gray-900 group-hover:text-yellow-600 transition-colors">
-                KISAKU
-              </span>
+              <img
+                class="h-9 w-auto max-w-[180px] object-contain"
+                src="/Kisaku_Supply_Agencies_Logo-removebg-preview.png"
+                alt="Kisaku Supply Agencies"
+              />
             </router-link>
             <div class="h-6 w-px bg-gray-300"></div>
             <h1 class="text-lg font-semibold text-gray-900">Product Management</h1>
@@ -77,7 +76,7 @@
       <div v-else class="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden">
         <!-- Table Header -->
         <div class="px-6 py-4 bg-gray-50 border-b border-gray-200/60">
-          <div class="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700 uppercase tracking-wider">
+          <div class="admin-list-header grid grid-cols-12 gap-4 text-sm font-medium text-gray-700 uppercase tracking-wider">
             <div class="col-span-3">Product</div>
             <div class="col-span-2">Category</div>
             <div class="col-span-2">Price</div>
@@ -91,9 +90,9 @@
           <div 
             v-for="product in products" 
             :key="product.id"
-            class="px-6 py-4 hover:bg-gray-50/50 transition-colors duration-200"
+            class="admin-list-item px-6 py-4 hover:bg-gray-50/50 transition-colors duration-200"
           >
-            <div class="grid grid-cols-12 gap-4 items-center">
+            <div class="admin-list-row grid grid-cols-12 gap-4 items-center">
               <!-- Product Info -->
               <div class="col-span-3">
                 <div class="flex items-center space-x-4">
@@ -124,6 +123,7 @@
 
               <!-- Category -->
               <div class="col-span-2">
+                <span class="admin-mobile-label">Category</span>
                 <span v-if="product.category" class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
                   {{ product.category.name }}
                 </span>
@@ -132,11 +132,13 @@
 
               <!-- Price -->
               <div class="col-span-2">
+                <span class="admin-mobile-label">Price</span>
                 <span class="text-sm font-semibold text-gray-900">Ksh {{ product.price?.toLocaleString() }}</span>
               </div>
 
               <!-- Stock -->
               <div class="col-span-2">
+                <span class="admin-mobile-label">Stock</span>
                 <span :class="[
                   'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium',
                   product.stock > 10 ? 'bg-green-100 text-green-800' : 
@@ -275,6 +277,47 @@
                   </div>
                 </div>
 
+                <div>
+                  <h4 class="text-sm font-semibold text-gray-800">Listing details</h4>
+                  <p class="mt-1 text-xs text-gray-500">Optional sale pricing and rating information shown on product cards.</p>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Original price</label>
+                    <input
+                      v-model.number="productForm.original_price"
+                      type="number"
+                      step="0.01"
+                      :min="productForm.price"
+                      class="w-full px-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Rating (0–5)</label>
+                    <input
+                      v-model.number="productForm.rating"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="5"
+                      class="w-full px-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Review count</label>
+                    <input
+                      v-model.number="productForm.review_count"
+                      type="number"
+                      step="1"
+                      min="0"
+                      class="w-full px-3 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
+                      placeholder="Optional"
+                    />
+                  </div>
+                </div>
+
                 <!-- Image Upload Section -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Product Image</label>
@@ -351,7 +394,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../store/auth';
 import { productAPI } from '../../services/api';
-import type { Product, Category } from '../../services/api';
+import type { Product, Category, CreateProductRequest } from '../../services/api';
 import AdminSidebar from '../../components/admin/AdminSidebar.vue';
 
 const authStore = useAuthStore();
@@ -366,10 +409,19 @@ const showEditModal = ref(false);
 const editingProductId = ref<number | null>(null);
 const imagePreview = ref<string | null>(null);
 
-const productForm = ref({
+type ProductForm = Omit<CreateProductRequest, 'original_price' | 'rating' | 'review_count'> & {
+  original_price: number | null | '';
+  rating: number | null | '';
+  review_count: number | null | '';
+};
+
+const productForm = ref<ProductForm>({
   name: '',
   description: '',
   price: 0,
+  original_price: null,
+  rating: null,
+  review_count: null,
   stock: 0,
   image: '',
   category_id: 0
@@ -385,6 +437,9 @@ function resetForm() {
     name: '',
     description: '',
     price: 0,
+    original_price: null,
+    rating: null,
+    review_count: null,
     stock: 0,
     image: '',
     category_id: 0
@@ -404,6 +459,9 @@ function editProduct(product: Product) {
     name: product.name,
     description: product.description,
     price: product.price,
+    original_price: product.original_price ?? null,
+    rating: product.rating ?? null,
+    review_count: product.review_count ?? null,
     stock: product.stock,
     image: product.image,
     category_id: product.category_id || 0
@@ -500,13 +558,39 @@ async function submitProduct() {
   
   try {
     // Prepare the product data
-    const productData = {
+    const originalPrice = productForm.value.original_price === '' || productForm.value.original_price === null
+      ? null
+      : Number(productForm.value.original_price);
+    const rating = productForm.value.rating === '' || productForm.value.rating === null
+      ? null
+      : Number(productForm.value.rating);
+    const reviewCount = productForm.value.review_count === '' || productForm.value.review_count === null
+      ? null
+      : Number(productForm.value.review_count);
+    const productData: CreateProductRequest = {
       ...productForm.value,
-      // Ensure price, stock, and category_id are numbers
       price: Number(productForm.value.price),
+      original_price: originalPrice,
+      rating,
+      review_count: reviewCount,
       stock: Number(productForm.value.stock),
       category_id: Number(productForm.value.category_id)
     };
+
+    if (originalPrice !== null && originalPrice <= productData.price) {
+      alert('Original price must be greater than the current price.');
+      return;
+    }
+
+    if (rating !== null && (rating < 0 || rating > 5)) {
+      alert('Rating must be between 0 and 5.');
+      return;
+    }
+
+    if (reviewCount !== null && (!Number.isInteger(reviewCount) || reviewCount < 0)) {
+      alert('Review count must be a non-negative whole number.');
+      return;
+    }
 
     // Validate category
     if (!productData.category_id || productData.category_id === 0) {

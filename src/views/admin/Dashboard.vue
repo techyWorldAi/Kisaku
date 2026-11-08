@@ -347,35 +347,12 @@ onMounted(() => {
 
 .admin-brand {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
   padding: 0 9px 28px;
   color: #155da5;
   text-decoration: none;
-}
-
-.brand-mark {
-  display: inline-flex;
-  width: 39px;
-  height: 39px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: #ff8500;
-  color: #fff;
-  font-size: 1.55rem;
-  font-weight: 900;
-}
-
-.admin-brand > span:last-child {
-  display: flex;
-  flex-direction: column;
-  line-height: 1;
-}
-
-.admin-brand strong {
-  font-size: 1.15rem;
-  letter-spacing: 0.02em;
 }
 
 .admin-brand small {

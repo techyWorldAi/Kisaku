@@ -2,10 +2,10 @@
   <div class="min-h-screen bg-gray-50">
     <Header />
     
-    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
       <div class="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden">
-        <div class="bg-gradient-to-r from-yellow-500 to-orange-500 px-6 py-4">
-          <h1 class="text-2xl font-bold text-white">My Orders</h1>
+        <div class="bg-gradient-to-r from-yellow-500 to-orange-500 px-4 sm:px-6 py-4">
+          <h1 class="text-xl sm:text-2xl font-bold text-white">My Orders</h1>
           <p class="text-yellow-100 mt-1">Track your order history and status</p>
         </div>
 
@@ -41,12 +41,12 @@
           <div 
             v-for="order in orders" 
             :key="order.id"
-            class="p-6 hover:bg-gray-50 transition-colors duration-200"
+            class="p-4 sm:p-6 hover:bg-gray-50 transition-colors duration-200"
           >
             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
               <!-- Order Info -->
               <div class="flex-1">
-                <div class="flex items-center space-x-4 mb-3">
+                <div class="flex flex-wrap items-center gap-3 mb-3">
                   <h3 class="text-lg font-semibold text-gray-900">Order #{{ order.id }}</h3>
                   <span :class="[
                     'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium',
@@ -87,7 +87,7 @@
               </div>
 
               <!-- Actions -->
-              <div class="flex space-x-3">
+              <div class="flex flex-wrap gap-3">
                 <button 
                   @click="viewOrderDetails(order)"
                   class="flex items-center space-x-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
@@ -111,8 +111,8 @@
         <div class="relative min-h-full flex items-center justify-center p-4">
           <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-gray-200/60">
             <!-- Header -->
-            <div class="bg-gradient-to-r from-yellow-500 to-orange-500 px-6 py-4 rounded-t-2xl flex justify-between items-center">
-              <h3 class="text-lg font-semibold text-white">Order Details - #{{ selectedOrder.id }}</h3>
+            <div class="bg-gradient-to-r from-yellow-500 to-orange-500 px-4 sm:px-6 py-4 rounded-t-2xl flex justify-between items-center gap-3">
+              <h3 class="text-base sm:text-lg font-semibold text-white break-words">Order Details - #{{ selectedOrder.id }}</h3>
               <button @click="selectedOrder = null" class="text-white hover:text-yellow-200">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -121,7 +121,7 @@
             </div>
             
             <!-- Order Details -->
-            <div class="p-6 space-y-6">
+            <div class="p-4 sm:p-6 space-y-6">
               <!-- Order Summary -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>

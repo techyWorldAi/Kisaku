@@ -7,6 +7,7 @@ import {
   CarFront,
   CreditCard,
   Headphones,
+  Heart,
   House,
   MonitorSmartphone,
   PackageCheck,
@@ -14,11 +15,12 @@ import {
   ShoppingBag,
   ShoppingCart,
   Sparkles,
+  Star,
   Truck,
-  Zap,
 } from 'lucide-vue-next';
 import { useAuthStore } from '../../store/auth';
 import { useCartStore } from '../../store/cart';
+import { useWishlistStore } from '../../store/wishlist';
 import { productAPI } from '../../services/api';
 import type { Category, Product } from '../../services/api';
 
@@ -65,6 +67,7 @@ const addedProductId = ref<number | null>(null);
 const router = useRouter();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
+const wishlistStore = useWishlistStore();
 let feedbackTimeout: ReturnType<typeof setTimeout> | undefined;
 
 const categoryCards = computed(() =>
@@ -118,16 +121,24 @@ function addToCart(product: Product) {
   }, 1600);
 }
 
-function buyNow(product: Product) {
-  if (product.stock <= 0) return;
-  addProduct(product);
-
+function toggleWishlist(product: Product) {
   if (!authStore.isAuthenticated) {
-    void router.push({ path: '/login', query: { redirect: '/checkout' } });
+    void router.push({ path: '/login', query: { redirect: router.currentRoute.value.fullPath } });
     return;
   }
+  wishlistStore.toggle(product.id);
+}
 
-  void router.push('/checkout');
+function discountPercentage(product: Product) {
+  const originalPrice = Number(product.original_price);
+  const price = Number(product.price);
+  if (!Number.isFinite(originalPrice) || originalPrice <= price || price <= 0) return 0;
+  return Math.round((1 - price / originalPrice) * 100);
+}
+
+function getProductCategory(product: Product) {
+  return product.category?.name
+    ?? categories.value.find((category) => category.id === product.category_id)?.name;
 }
 
 async function fetchProducts() {
@@ -245,26 +256,40 @@ onMounted(() => {
                   <ShoppingBag :size="32" stroke-width="1.5" />
                   <span>Image unavailable</span>
                 </span>
+                <span v-if="discountPercentage(product) > 0" class="sale-badge">
+                  -{{ discountPercentage(product) }}%
+                </span>
               </router-link>
+              <button
+                type="button"
+                class="wishlist-toggle"
+                :class="{ saved: wishlistStore.isSaved(product.id) }"
+                :aria-label="wishlistStore.isSaved(product.id) ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`"
+                :aria-pressed="wishlistStore.isSaved(product.id)"
+                @click="toggleWishlist(product)"
+              >
+                <Heart :size="17" :fill="wishlistStore.isSaved(product.id) ? 'currentColor' : 'none'" />
+              </button>
 
               <div class="product-info">
                 <router-link :to="`/product/${product.id}`" class="product-title">
                   {{ product.name }}
                 </router-link>
-                <p v-if="product.category?.name" class="product-category">
-                  {{ product.category.name }}
-                </p>
-                <p class="product-price">KSh {{ Number(product.price).toLocaleString() }}</p>
-                <div class="product-action-row">
-                  <button
-                    class="product-action product-action-buy"
-                    :disabled="product.stock <= 0"
-                    type="button"
-                    @click="buyNow(product)"
-                  >
-                    <Zap :size="15" aria-hidden="true" />
-                    Buy now
-                  </button>
+                <span v-if="getProductCategory(product)" class="product-category">
+                  {{ getProductCategory(product) }}
+                </span>
+                <div class="product-price-row">
+                  <p class="product-price">KSh {{ Number(product.price).toLocaleString() }}</p>
+                  <del v-if="discountPercentage(product) > 0" class="product-original-price">
+                    KSh {{ Number(product.original_price).toLocaleString() }}
+                  </del>
+                </div>
+                <div v-if="typeof product.rating === 'number' && typeof product.review_count === 'number' && product.review_count > 0" class="product-rating">
+                  <Star :size="12" fill="currentColor" aria-hidden="true" />
+                  <span>{{ Number(product.rating).toFixed(1) }}</span>
+                  <span class="product-review-count">({{ Number(product.review_count).toLocaleString() }})</span>
+                </div>
+                <div class="product-action-row product-card-actions">
                   <button
                     class="product-action product-action-cart"
                     :class="{ added: addedProductId === product.id }"
@@ -272,8 +297,8 @@ onMounted(() => {
                     type="button"
                     @click="addToCart(product)"
                   >
-                    <ShoppingCart :size="15" aria-hidden="true" />
-                    {{ addedProductId === product.id ? 'Added' : 'Add to cart' }}
+                    <ShoppingCart :size="14" aria-hidden="true" />
+                    {{ addedProductId === product.id ? 'Added to Cart' : 'Add to Cart' }}
                   </button>
                 </div>
               </div>
@@ -458,19 +483,19 @@ onMounted(() => {
 }
 
 .product-card {
+  position: relative;
   display: flex;
   min-width: 0;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #e3e8ee;
   border-radius: 6px;
   background: #fff;
-  transition: box-shadow 160ms ease, transform 160ms ease;
+  transition: box-shadow 180ms ease, transform 180ms ease;
 }
 
 .product-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgb(16 44 73 / 10%);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px rgb(16 44 73 / 12%);
 }
 
 .product-media {
@@ -481,6 +506,30 @@ onMounted(() => {
   justify-content: center;
   overflow: hidden;
   background: #f7f8fa;
+}
+
+.wishlist-toggle {
+  position: absolute;
+  z-index: 2;
+  top: 7px;
+  right: 7px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 94%);
+  color: #155da5;
+  cursor: pointer;
+}
+
+.wishlist-toggle.saved {
+  color: #e11d48;
+}
+
+.wishlist-toggle:hover {
+  transform: scale(1.06);
 }
 
 .product-media img {
@@ -522,40 +571,91 @@ onMounted(() => {
   display: flex;
   flex: 1;
   flex-direction: column;
-  padding: 11px;
+  padding: 9px;
 }
 
 .product-title {
   display: -webkit-box;
-  min-height: 38px;
+  min-height: 0;
   overflow: hidden;
-  color: #24364b;
-  font-size: 0.83rem;
-  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.78rem;
+  font-weight: 650;
   line-height: 1.4;
   text-decoration: none;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
 }
 
 .product-title:hover {
-  color: #075397;
+  color: #111827;
 }
 
 .product-category {
+  width: fit-content;
+  max-width: 100%;
   margin: 5px 0 0;
   overflow: hidden;
-  color: #64748b;
-  font-size: 0.7rem;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 0.64rem;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .product-price {
-  margin: 9px 0 11px;
+  margin: 5px 0 0;
   color: #111827;
-  font-size: 1rem;
+  font-size: 0.82rem;
   font-weight: 750;
+}
+
+.product-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.product-original-price {
+  color: #6b7280;
+  font-size: 0.65rem;
+}
+
+.product-rating {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin: 3px 0 7px;
+  color: #f59e0b;
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
+.product-review-count {
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.sale-badge {
+  position: absolute;
+  z-index: 1;
+  top: 6px;
+  left: 6px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: #e52429;
+  color: #fff;
+  font-size: 0.63rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.product-card-actions {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 5px;
 }
 
 .catalog-promo {

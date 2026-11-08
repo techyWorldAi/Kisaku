@@ -55,8 +55,12 @@ function signOut() {
 
   <aside class="admin-sidebar" :class="{ 'sidebar-open': mobileOpen }">
     <router-link to="/admin/dashboard" class="admin-brand" aria-label="Kisaku admin home">
-      <span class="brand-mark">K</span>
-      <span><strong>KISAKU</strong><small>ADMINISTRATION</small></span>
+      <img
+        class="admin-brand-logo"
+        src="/Kisaku_Supply_Agencies_Logo-removebg-preview.png"
+        alt="Kisaku Supply Agencies"
+      />
+      <small class="admin-brand-label">ADMINISTRATION</small>
     </router-link>
 
     <p class="nav-caption">WORKSPACE</p>
@@ -115,32 +119,18 @@ function signOut() {
   text-decoration: none;
 }
 
-.brand-mark {
-  display: inline-flex;
-  width: 39px;
-  height: 39px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  background: #f58216;
-  color: #fff;
-  font-size: 1.55rem;
-  font-weight: 900;
+.admin-brand-logo {
+  display: block;
+  width: 205px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
 }
 
-.admin-brand > span:last-child {
-  display: flex;
-  flex-direction: column;
-  line-height: 1;
-}
-
-.admin-brand strong {
-  font-size: 1.15rem;
-  letter-spacing: 0.02em;
-}
-
-.admin-brand small {
+.admin-brand-label {
   margin-top: 5px;
+  margin-left: 3px;
+  color: #64748b;
   font-size: 0.53rem;
   font-weight: 750;
   letter-spacing: 0.1em;

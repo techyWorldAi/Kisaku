@@ -2,10 +2,10 @@
   <div class="cart-page min-h-screen bg-gray-50">
     <Header />
     
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="flex flex-col lg:flex-row gap-8">
+    <main class="cart-main">
+      <div class="cart-layout">
         <!-- Cart Items -->
-        <div class="lg:flex-1">
+        <div class="cart-items-column">
           <div class="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden">
             <div class="bg-[#155DA5] px-6 py-4">
               <h1 class="text-2xl font-bold text-white">Shopping Cart</h1>
@@ -97,8 +97,8 @@
         </div>
 
         <!-- Order Summary -->
-        <div class="lg:w-96">
-          <div class="bg-white rounded-2xl shadow-sm border border-gray-200/60 p-6 sticky top-24">
+        <div class="cart-summary-column">
+          <div class="cart-summary-card bg-white rounded-2xl shadow-sm border border-gray-200/60 p-6">
             <h2 class="text-xl font-bold text-gray-900 mb-4">Order Summary</h2>
             
             <div class="space-y-3 mb-6">
@@ -112,7 +112,7 @@
               </div>
               <div class="border-t border-gray-200 pt-3">
                 <div class="flex justify-between text-lg font-semibold">
-                  <span class="text-gray-900">Subtotal</span>
+                  <span class="text-gray-900">Total</span>
                   <span class="text-gray-900">Ksh {{ cartStore.cartTotal.toLocaleString() }}</span>
                 </div>
               </div>
@@ -173,6 +173,29 @@ function proceedToCheckout() {
   color: #102a43;
 }
 
+.cart-main {
+  width: min(1280px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 32px 0;
+}
+
+.cart-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  align-items: start;
+  gap: 32px;
+}
+
+.cart-items-column,
+.cart-summary-column {
+  min-width: 0;
+}
+
+.cart-summary-card {
+  position: sticky;
+  top: 24px;
+}
+
 .cart-item-row {
   min-width: 0;
 }
@@ -182,11 +205,20 @@ function proceedToCheckout() {
   height: 40px;
 }
 
+@media (max-width: 900px) {
+  .cart-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cart-summary-card {
+    position: static;
+  }
+}
+
 @media (max-width: 640px) {
-  .cart-page main {
+  .cart-main {
     width: calc(100% - 28px);
-    padding-right: 0;
-    padding-left: 0;
+    padding: 24px 0;
   }
 
   .cart-item-row {

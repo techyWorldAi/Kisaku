@@ -3,11 +3,11 @@
     <div class="footer-main">
       <section class="footer-brand">
         <router-link to="/" class="footer-logo">
-          <span class="footer-mark">K</span>
-          <span>
-            <strong>KISAKU</strong>
-            <small>SUPPLY AGENCIES</small>
-          </span>
+          <img
+            class="footer-logo-image"
+            src="/Kisaku_Supply_Agencies_Logo-removebg-preview.png"
+            alt="Kisaku Supply Agencies"
+          />
         </router-link>
         <p>Everyday essentials, thoughtfully selected for shoppers across Kenya.</p>
       </section>
@@ -82,36 +82,13 @@
   text-decoration: none;
 }
 
-.footer-mark {
-  display: inline-flex;
-  width: 40px;
-  height: 40px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  background: #ff8500;
-  color: #fff;
-  font-size: 1.65rem;
-  font-weight: 900;
-}
-
-.footer-logo > span:last-child {
-  display: flex;
-  flex-direction: column;
-  line-height: 1;
-}
-
-.footer-logo strong {
-  font-size: 1.3rem;
-  letter-spacing: 0.03em;
-}
-
-.footer-logo small {
-  margin-top: 5px;
-  color: #a9c5df;
-  font-size: 0.52rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+.footer-logo-image {
+  display: block;
+  width: 190px;
+  height: auto;
+  padding: 5px 8px;
+  border-radius: 5px;
+  background: #fff;
 }
 
 .footer-column {

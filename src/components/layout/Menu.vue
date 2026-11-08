@@ -78,7 +78,10 @@ function handleOutsideClick(event: MouseEvent) {
   if (target instanceof Element && !target.closest('.category-control')) {
     categoriesOpen.value = false;
   }
-  if (target instanceof Element && !target.closest('.site-header')) {
+  const clickedWithinHeader = event.composedPath().some(
+    (element) => element instanceof Element && element.matches('.site-header, .header-main'),
+  );
+  if (!clickedWithinHeader) {
     mobileMenuOpen.value = false;
   }
 }
@@ -146,11 +149,11 @@ onUnmounted(() => {
   <header class="header-main">
       <div class="header-row">
         <router-link to="/" class="brand" aria-label="Kisaku Supply Agencies home" @click="closeOverlays">
-          <span class="brand-mark">K</span>
-          <span class="brand-copy">
-            <strong>KISAKU</strong>
-            <small>SUPPLY AGENCIES</small>
-          </span>
+          <img
+            class="brand-logo"
+            src="/Kisaku_Supply_Agencies_Logo-removebg-preview.png"
+            alt="Kisaku Supply Agencies"
+          />
         </router-link>
 
         <form class="header-search" role="search" @submit.prevent="submitSearch">
@@ -304,7 +307,7 @@ onUnmounted(() => {
 
 .header-row {
   display: grid;
-  min-height: 82px;
+  min-height: 90px;
   grid-template-columns: auto minmax(200px, 1fr) auto;
   align-items: center;
   gap: clamp(18px, 3vw, 40px);
@@ -319,39 +322,11 @@ onUnmounted(() => {
   text-decoration: none;
 }
 
-.brand-mark {
-  display: inline-flex;
-  width: 43px;
-  height: 43px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9px;
-  background: #f58216;
-  color: #fff;
-  font-size: 1.8rem;
-  font-weight: 900;
-  letter-spacing: -0.08em;
-}
-
-.brand-copy {
-  display: flex;
-  flex-direction: column;
-  line-height: 1;
-}
-
-.brand-copy strong {
-  color: #075397;
-  font-size: 1.55rem;
-  font-weight: 850;
-  letter-spacing: 0.015em;
-}
-
-.brand-copy small {
-  margin-top: 5px;
-  color: #075397;
-  font-size: 0.55rem;
-  font-weight: 750;
-  letter-spacing: 0.12em;
+.brand-logo {
+  display: block;
+  width: 240px;
+  height: 72px;
+  object-fit: cover;
 }
 
 .header-search {
@@ -639,7 +614,11 @@ onUnmounted(() => {
 }
 
 @media (max-width: 760px) {
-  .header-main,
+  .header-main {
+    width: 100%;
+  }
+
+  .header-row,
   .nav-inner {
     width: calc(100% - 28px);
   }
@@ -650,18 +629,9 @@ onUnmounted(() => {
     gap: 12px;
   }
 
-  .brand-mark {
-    width: 38px;
-    height: 38px;
-    font-size: 1.55rem;
-  }
-
-  .brand-copy strong {
-    font-size: 1.32rem;
-  }
-
-  .brand-copy small {
-    font-size: 0.49rem;
+  .brand-logo {
+    width: min(190px, 100%);
+    height: 58px;
   }
 
   .header-search {
@@ -677,6 +647,14 @@ onUnmounted(() => {
 
   .header-actions {
     gap: 11px;
+  }
+
+  .account-action,
+  .cart-action,
+  .mobile-menu-toggle {
+    min-width: 40px;
+    min-height: 42px;
+    justify-content: center;
   }
 
   .account-action span,
@@ -732,12 +710,8 @@ onUnmounted(() => {
     gap: 7px;
   }
 
-  .brand-copy strong {
-    font-size: 1.18rem;
-  }
-
-  .brand-copy small {
-    font-size: 0.44rem;
+  .brand-logo {
+    width: min(170px, 100%);
   }
 }
 </style>

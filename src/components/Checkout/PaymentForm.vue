@@ -64,6 +64,7 @@
           v-model="selectedPayment"
           :value="method.value"
           class="accent-[#155DA5]"
+          @change="handlePaymentChange"
         />
         <div class="flex items-center space-x-3">
           <div :class="['w-10 h-10 rounded-lg flex items-center justify-center', method.bgColor]">
@@ -77,30 +78,75 @@
       </label>
     </div>
 
-    <!-- M-Pesa Payment Form -->
-    <div v-if="selectedPayment === 'mpesa'" class="bg-gray-50 p-6 rounded-xl mb-6">
-      <h3 class="text-lg font-semibold text-gray-900 mb-4">M-Pesa Payment</h3>
-      <p class="text-gray-600 mb-4">
-        You will receive a prompt on your phone to complete the payment of 
-        <strong>Ksh {{ props.totalAmount.toLocaleString() }}</strong>.
-      </p>
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">
-            Phone Number
-          </label>
-          <input
-            type="tel"
-            v-model="mpesaPhone"
-            :class="[
-              'w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#155DA5] focus:border-[#155DA5] transition-colors',
-              mpesaErrors.phone ? 'border-red-500' : 'border-gray-300'
-            ]"
-            placeholder="07XX XXX XXX"
-          />
-          <p v-if="mpesaErrors.phone" class="mt-1 text-sm text-red-600">{{ mpesaErrors.phone }}</p>
+    <div
+      v-if="mpesaDialogOpen"
+      class="mpesa-dialog-backdrop"
+      @click.self="closeMpesaDialog"
+      @keydown.esc="closeMpesaDialog"
+    >
+      <section
+        class="mpesa-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mpesa-dialog-title"
+        aria-describedby="mpesa-dialog-guidance"
+      >
+        <button
+          class="mpesa-dialog-close"
+          type="button"
+          aria-label="Close M-Pesa payment dialog"
+          :disabled="processingPayment"
+          @click="closeMpesaDialog"
+        >
+          <X :size="20" />
+        </button>
+
+        <div class="mpesa-dialog-icon">
+          <Smartphone :size="25" aria-hidden="true" />
         </div>
-      </div>
+        <h3 id="mpesa-dialog-title">Pay with M-Pesa</h3>
+        <p id="mpesa-dialog-guidance" class="mpesa-dialog-guidance">
+          Enter the M-Pesa number to receive a payment prompt for
+          <strong>Ksh {{ props.totalAmount.toLocaleString() }}</strong>.
+          Keep your phone nearby. When the prompt arrives, check the amount and enter your M-Pesa PIN to approve.
+        </p>
+
+        <form class="mpesa-dialog-form" @submit.prevent="processPayment">
+          <label for="mpesa-phone">M-Pesa phone number</label>
+          <input
+            id="mpesa-phone"
+            ref="mpesaPhoneInput"
+            v-model="mpesaPhone"
+            type="tel"
+            inputmode="tel"
+            autocomplete="tel"
+            placeholder="07XX XXX XXX or 2547XX XXX XXX"
+            :aria-invalid="Boolean(mpesaErrors.phone)"
+            :aria-describedby="mpesaErrors.phone ? 'mpesa-phone-error' : 'mpesa-phone-help'"
+            :class="{ 'has-error': mpesaErrors.phone }"
+            :disabled="processingPayment"
+            @input="clearMpesaPhoneError"
+          />
+          <p v-if="mpesaErrors.phone" id="mpesa-phone-error" class="mpesa-phone-error">
+            {{ mpesaErrors.phone }}
+          </p>
+          <p v-else id="mpesa-phone-help" class="mpesa-phone-help">
+            Use the number registered with M-Pesa. You can enter it as 07…, 01…, or 254….
+          </p>
+
+          <p v-if="processingPayment" class="mpesa-waiting-message" role="status" aria-live="polite">
+            <svg class="mpesa-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity=".2" stroke-width="3" />
+              <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-linecap="round" stroke-width="3" />
+            </svg>
+            Sending your request. Keep this page open and watch your phone for the M-Pesa prompt.
+          </p>
+
+          <button class="mpesa-submit" type="submit" :disabled="processingPayment">
+            {{ processingPayment ? 'Waiting for prompt…' : `Send prompt · Ksh ${props.totalAmount.toLocaleString()}` }}
+          </button>
+        </form>
+      </section>
     </div>
 
     <!-- Cash on Delivery Info -->
@@ -129,7 +175,7 @@
         Back
       </button>
       <button
-        @click="processPayment"
+        @click="handlePayClick"
         :disabled="processingPayment || !selectedPayment"
         class="px-6 py-3 bg-[#FF8500] text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center space-x-2"
       >
@@ -137,9 +183,9 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
         <span>
-          {{ processingPayment ? 'Processing...' : 
-             selectedPayment === 'cash' ? `Place Order (Ksh ${props.totalAmount.toLocaleString()})` : 
-             `Pay Ksh ${props.totalAmount.toLocaleString()}` 
+          {{ processingPayment ? 'Processing...' :
+             selectedPayment === 'cash' ? `Place Order (Ksh ${props.totalAmount.toLocaleString()})` :
+             `Pay Ksh ${props.totalAmount.toLocaleString()}`
           }}
         </span>
       </button>
@@ -148,8 +194,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { Banknote, Smartphone } from 'lucide-vue-next';
+import { nextTick, ref } from 'vue';
+import { Banknote, Smartphone, X } from 'lucide-vue-next';
 import { PaymentService } from '../../services/payment';
 import { orderAPI } from '../../services/api';
 import type { Order } from '../../services/api';
@@ -183,6 +229,8 @@ const cartStore = useCartStore();
 
 const selectedPayment = ref<'mpesa' | 'cash' | ''>('');
 const mpesaPhone = ref('');
+const mpesaPhoneInput = ref<HTMLInputElement | null>(null);
+const mpesaDialogOpen = ref(false);
 const processingPayment = ref(false);
 const mpesaErrors = ref<{ phone?: string }>({});
 
@@ -202,6 +250,32 @@ const paymentMethods = [
     bgColor: 'bg-orange-600'
   }
 ];
+
+function handlePaymentChange() {
+  mpesaErrors.value = {};
+  mpesaDialogOpen.value = selectedPayment.value === 'mpesa';
+  if (mpesaDialogOpen.value) {
+    void nextTick(() => mpesaPhoneInput.value?.focus());
+  }
+}
+
+function handlePayClick() {
+  if (selectedPayment.value === 'mpesa') {
+    mpesaDialogOpen.value = true;
+    void nextTick(() => mpesaPhoneInput.value?.focus());
+    return;
+  }
+
+  void processPayment();
+}
+
+function closeMpesaDialog() {
+  if (!processingPayment.value) mpesaDialogOpen.value = false;
+}
+
+function clearMpesaPhoneError() {
+  if (mpesaErrors.value.phone) mpesaErrors.value = {};
+}
 
 async function processPayment() {
   if (!selectedPayment.value) {
@@ -289,3 +363,192 @@ async function processPayment() {
   }
 }
 </script>
+
+<style scoped>
+.mpesa-dialog-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  overflow-y: auto;
+  padding: 20px;
+  background: rgb(15 31 50 / 58%);
+}
+
+.mpesa-dialog {
+  position: relative;
+  width: min(440px, 100%);
+  padding: 28px;
+  border: 1px solid #dce5ef;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgb(15 31 50 / 28%);
+}
+
+.mpesa-dialog-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.mpesa-dialog-close:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #102a43;
+}
+
+.mpesa-dialog-close:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.mpesa-dialog-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 12px;
+  background: #e8f7ed;
+  color: #16803c;
+}
+
+.mpesa-dialog h3 {
+  margin: 16px 0 7px;
+  color: #102a43;
+  font-size: 1.3rem;
+  font-weight: 750;
+}
+
+.mpesa-dialog-guidance {
+  margin: 0;
+  color: #52657b;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.mpesa-dialog-guidance strong {
+  color: #102a43;
+}
+
+.mpesa-dialog-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.mpesa-dialog-form label {
+  color: #263b56;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.mpesa-dialog-form input {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid #cbd8e8;
+  border-radius: 6px;
+  background: #fff;
+  color: #102a43;
+  font: inherit;
+}
+
+.mpesa-dialog-form input:focus {
+  border-color: #155da5;
+  outline: 3px solid rgb(21 93 165 / 14%);
+}
+
+.mpesa-dialog-form input.has-error {
+  border-color: #dc2626;
+}
+
+.mpesa-phone-help,
+.mpesa-phone-error {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.mpesa-phone-help {
+  color: #64748b;
+}
+
+.mpesa-phone-error {
+  color: #b91c1c;
+}
+
+.mpesa-waiting-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 5px 0 0;
+  padding: 11px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #174b81;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.mpesa-spinner {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  animation: mpesa-spin 900ms linear infinite;
+}
+
+.mpesa-submit {
+  min-height: 46px;
+  margin-top: 9px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: #f58216;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.mpesa-submit:hover:not(:disabled) {
+  background: #df700d;
+}
+
+.mpesa-submit:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+@keyframes mpesa-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 480px) {
+  .mpesa-dialog-backdrop {
+    padding: 14px;
+  }
+
+  .mpesa-dialog {
+    padding: 23px 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mpesa-spinner {
+    animation-duration: 2.5s;
+  }
+}
+</style>

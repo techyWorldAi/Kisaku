@@ -122,6 +122,9 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  original_price?: number | null;
+  rating?: number | null;
+  review_count?: number | null;
   stock: number;
   image: string;
   category_id: number;
@@ -133,6 +136,9 @@ export interface CreateProductRequest {
   name: string;
   description: string;
   price: number;
+  original_price?: number | null;
+  rating?: number | null;
+  review_count?: number | null;
   stock: number;
   image?: string;
   category_id: number;
@@ -142,6 +148,9 @@ export interface UpdateProductRequest {
   name?: string;
   description?: string;
   price?: number;
+  original_price?: number | null;
+  rating?: number | null;
+  review_count?: number | null;
   stock?: number;
   image?: string;
   category_id?: number;

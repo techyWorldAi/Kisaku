@@ -28,9 +28,9 @@
     </div>
 
     <!-- Product Details -->
-    <div v-else class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div v-else class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
       <div class="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 p-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8 p-4 sm:p-6 md:p-8">
           <!-- Product Images -->
           <div class="space-y-4">
             <!-- Main Image -->
@@ -51,24 +51,24 @@
           <!-- Product Info -->
           <div class="space-y-6">
             <!-- Breadcrumb -->
-            <nav class="flex space-x-2 text-sm text-gray-500">
+            <nav class="flex flex-wrap gap-x-2 gap-y-1 text-sm text-gray-500">
               <router-link to="/" class="hover:text-[#155DA5]">Home</router-link>
               <span>/</span>
               <router-link to="/shop" class="hover:text-[#155DA5]">Shop</router-link>
               <span>/</span>
-              <span class="text-gray-900">{{ product.name }}</span>
+              <span class="min-w-0 text-gray-900 break-words">{{ product.name }}</span>
             </nav>
 
             <!-- Product Title -->
-            <h1 class="text-3xl font-bold text-gray-900">{{ product.name }}</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 break-words">{{ product.name }}</h1>
 
             <!-- Price -->
             <div class="flex items-baseline space-x-2">
-              <span class="text-4xl font-bold text-gray-900">Ksh {{ product.price.toLocaleString() }}</span>
+              <span class="text-3xl sm:text-4xl font-bold text-gray-900">Ksh {{ product.price.toLocaleString() }}</span>
             </div>
 
             <!-- Stock Status -->
-            <div class="flex items-center space-x-2">
+            <div class="flex flex-wrap items-center gap-2">
               <span :class="[
                 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium',
                 product.stock > 10 ? 'bg-green-100 text-green-800' : 
@@ -97,7 +97,6 @@
                   :disabled="product.stock <= 0"
                   @click="buyNow"
                 >
-                  <Zap :size="17" aria-hidden="true" />
                   <span>Buy now</span>
                 </button>
                 <button
@@ -107,7 +106,6 @@
                   :disabled="product.stock <= 0"
                   @click="addToCart"
                 >
-                  <ShoppingCart :size="17" aria-hidden="true" />
                   <span>{{ showSuccess ? 'Added to cart' : 'Add to cart' }}</span>
                 </button>
               </div>
@@ -133,17 +131,17 @@
 
             <!-- Additional Info -->
             <div class="border-t border-gray-200 pt-6 space-y-4">
-              <div class="flex items-center space-x-2 text-sm text-gray-600">
+              <div class="flex items-start gap-2 text-sm text-gray-600">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                <span>Delivery options are shown during checkout.</span>
+                <span class="min-w-0">Delivery options are shown during checkout.</span>
               </div>
-              <div class="flex items-center space-x-2 text-sm text-gray-600">
+              <div class="flex items-start gap-2 text-sm text-gray-600">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                <span>M-Pesa and cash payment options are available at checkout.</span>
+                <span class="min-w-0">M-Pesa and cash payment options are available at checkout.</span>
               </div>
             </div>
           </div>
@@ -152,7 +150,7 @@
 
       <!-- Related Products (Optional) -->
       <div class="mt-12">
-        <h2 class="text-2xl font-bold text-gray-900 mb-6">You Might Also Like</h2>
+        <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-6">You Might Also Like</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <!-- Related products would go here -->
         </div>
@@ -164,7 +162,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ShoppingCart, Zap } from 'lucide-vue-next';
 import { useAuthStore } from '../store/auth';
 import { useCartStore } from '../store/cart';
 import { productAPI } from '../services/api';

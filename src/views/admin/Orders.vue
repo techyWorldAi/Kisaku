@@ -10,12 +10,11 @@
               to="/admin/dashboard" 
               class="flex items-center space-x-3 group"
             >
-              <div class="w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
-                <span class="text-white font-black text-sm">K</span>
-              </div>
-              <span class="text-xl font-black text-gray-900 group-hover:text-yellow-600 transition-colors">
-                KISAKU
-              </span>
+              <img
+                class="h-9 w-auto max-w-[180px] object-contain"
+                src="/Kisaku_Supply_Agencies_Logo-removebg-preview.png"
+                alt="Kisaku Supply Agencies"
+              />
             </router-link>
             <div class="h-6 w-px bg-gray-300"></div>
             <h1 class="text-lg font-semibold text-gray-900">Order Management</h1>
@@ -77,7 +76,7 @@
       <div class="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden">
         <!-- Table Header -->
         <div class="px-6 py-4 bg-gray-50 border-b border-gray-200/60">
-          <div class="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700 uppercase tracking-wider">
+          <div class="admin-list-header grid grid-cols-12 gap-4 text-sm font-medium text-gray-700 uppercase tracking-wider">
             <div class="col-span-2">Order ID</div>
             <div class="col-span-3">Customer</div>
             <div class="col-span-2">Total</div>
@@ -92,17 +91,19 @@
           <div 
             v-for="order in filteredOrders" 
             :key="order.id"
-            class="px-6 py-4 hover:bg-gray-50/50 transition-colors duration-200"
+            class="admin-list-item px-6 py-4 hover:bg-gray-50/50 transition-colors duration-200"
           >
-            <div class="grid grid-cols-12 gap-4 items-center">
+            <div class="admin-list-row grid grid-cols-12 gap-4 items-center">
               <!-- Order ID -->
               <div class="col-span-2">
+                <span class="admin-mobile-label">Order</span>
                 <span class="text-sm font-semibold text-gray-900">#{{ order.id }}</span>
                 <p class="text-xs text-gray-500">{{ formatDate(order.created_at) }}</p>
               </div>
 
               <!-- Customer Info -->
               <div class="col-span-3">
+                <span class="admin-mobile-label">Customer</span>
                 <div v-if="order.user" class="flex items-center space-x-3">
                   <div class="w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center text-white font-semibold text-xs">
                     {{ order.user.name.charAt(0).toUpperCase() }}
@@ -117,11 +118,13 @@
 
               <!-- Total -->
               <div class="col-span-2">
+                <span class="admin-mobile-label">Total</span>
                 <span class="text-sm font-semibold text-gray-900">Ksh {{ order.total.toLocaleString() }}</span>
               </div>
 
               <!-- Payment Method -->
               <div class="col-span-2">
+                <span class="admin-mobile-label">Payment</span>
                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                   :class="getPaymentMethodClasses(order.payment_method)">
                   {{ getPaymentMethodDisplay(order.payment_method) }}
@@ -133,6 +136,7 @@
 
               <!-- Status -->
               <div class="col-span-2">
+                <span class="admin-mobile-label">Status</span>
                 <select 
                   v-model="order.status" 
                   @change="updateOrderStatus(order.id, order.status)"

@@ -10,12 +10,11 @@
               to="/admin/dashboard" 
               class="flex items-center space-x-3 group"
             >
-              <div class="w-8 h-8 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
-                <span class="text-white font-black text-sm">K</span>
-              </div>
-              <span class="text-xl font-black text-gray-900 group-hover:text-yellow-600 transition-colors">
-                KISAKU
-              </span>
+              <img
+                class="h-9 w-auto max-w-[180px] object-contain"
+                src="/Kisaku_Supply_Agencies_Logo-removebg-preview.png"
+                alt="Kisaku Supply Agencies"
+              />
             </router-link>
             <div class="h-6 w-px bg-gray-300"></div>
             <h1 class="text-lg font-semibold text-gray-900">{{ employeeView ? 'Employee Management' : 'Account Management' }}</h1>
@@ -79,7 +78,7 @@
       <div class="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden">
         <!-- Table Header -->
         <div class="px-6 py-4 bg-gray-50 border-b border-gray-200/60">
-          <div class="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700 uppercase tracking-wider">
+          <div class="admin-list-header grid grid-cols-12 gap-4 text-sm font-medium text-gray-700 uppercase tracking-wider">
             <div class="col-span-4">User</div>
             <div class="col-span-3">Role</div>
             <div class="col-span-2">Orders</div>
@@ -93,11 +92,12 @@
           <div 
             v-for="user in filteredUsers" 
             :key="user.id"
-            class="px-6 py-4 hover:bg-gray-50/50 transition-colors duration-200"
+            class="admin-list-item px-6 py-4 hover:bg-gray-50/50 transition-colors duration-200"
           >
-            <div class="grid grid-cols-12 gap-4 items-center">
+            <div class="admin-list-row grid grid-cols-12 gap-4 items-center">
               <!-- User Info -->
               <div class="col-span-4">
+                <span class="admin-mobile-label">User</span>
                 <div class="flex items-center space-x-4">
                   <div class="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                     {{ user.name.charAt(0).toUpperCase() }}
@@ -111,6 +111,7 @@
 
               <!-- Role -->
               <div class="col-span-3">
+                <span class="admin-mobile-label">Role</span>
                 <span :class="[
                   'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize',
                   user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
@@ -121,12 +122,14 @@
 
               <!-- Orders -->
               <div class="col-span-2">
+                <span class="admin-mobile-label">Orders</span>
                 <span class="text-sm font-semibold text-gray-900">{{ user.ordersCount || 0 }}</span>
                 <span class="text-sm text-gray-500 ml-1">orders</span>
               </div>
 
               <!-- Join Date -->
               <div class="col-span-2">
+                <span class="admin-mobile-label">Joined</span>
                 <span class="text-sm text-gray-900">{{ formatDate(user.created_at) }}</span>
               </div>
 

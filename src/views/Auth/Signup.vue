@@ -3,11 +3,11 @@
     <div class="auth-layout">
       <aside class="auth-brand-panel">
         <router-link to="/" class="auth-brand" aria-label="Kisaku Supply Agencies home">
-          <span class="auth-brand-mark">K</span>
-          <span class="auth-brand-copy">
-            <strong>KISAKU</strong>
-            <small>SUPPLY AGENCIES</small>
-          </span>
+          <img
+            class="auth-brand-logo"
+            src="/Kisaku_Supply_Agencies_Logo-removebg-preview.png"
+            alt="Kisaku Supply Agencies"
+          />
         </router-link>
         <div class="auth-brand-message">
           <h1>Make everyday shopping easier.</h1>
