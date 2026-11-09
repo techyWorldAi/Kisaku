@@ -15,6 +15,7 @@ import { adminAPI } from '../../services/api';
 import type { AdminDashboardSummary } from '../../services/api';
 import { useAuthStore } from '../../store/auth';
 import AdminSidebar from '../../components/admin/AdminSidebar.vue';
+import { formatOrderNumber } from '../../utils/orderNumber';
 
 type DateRange = 'today' | 'week' | 'month' | 'quarter' | 'custom';
 
@@ -165,6 +166,10 @@ onMounted(() => {
             <Package :size="17" />
             Manage products
           </router-link>
+          <router-link v-if="authStore.isAdmin" to="/admin/storefront" class="primary-link">
+            <Boxes :size="17" />
+            Manage storefront
+          </router-link>
         </section>
 
         <section class="date-toolbar" aria-label="Dashboard date range">
@@ -306,7 +311,7 @@ onMounted(() => {
                 </thead>
                 <tbody>
                   <tr v-for="order in recentOrders" :key="order.id">
-                    <td class="order-number">#{{ order.id }}</td>
+                    <td class="order-number">#{{ formatOrderNumber(order.id) }}</td>
                     <td>
                       <strong>{{ order.user?.name ?? 'Customer' }}</strong>
                       <small>{{ order.user?.email ?? 'Customer details unavailable' }}</small>

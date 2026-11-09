@@ -201,6 +201,7 @@ import { orderAPI } from '../../services/api';
 import type { Order } from '../../services/api';
 import { isDemoMode } from '../../services/demoStore';
 import { useCartStore } from '../../store/cart';
+import { useOrdersStore } from '../../store/orders';
 import type { Address, CartItem } from '../../types/checkout';
 
 // Icons for payment methods
@@ -226,6 +227,7 @@ const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 const cartStore = useCartStore();
+const ordersStore = useOrdersStore();
 
 const selectedPayment = ref<'mpesa' | 'cash' | ''>('');
 const mpesaPhone = ref('');
@@ -304,6 +306,13 @@ async function processPayment() {
     // Create order data for backend - include payment method info
     const orderData = {
       items: orderItems,
+      delivery_address: {
+        name: props.address.name.trim(),
+        email: props.address.email.trim(),
+        phone: props.address.phone.trim(),
+        street: props.address.address.trim(),
+        city: props.address.city.trim(),
+      },
       phone_number: selectedPayment.value === 'mpesa' ? mpesaPhone.value : props.address.phone,
       payment_method: selectedPayment.value,
       delivery_method: props.address.deliveryMethod,
@@ -311,9 +320,11 @@ async function processPayment() {
     };
 
     const order = await orderAPI.createOrder(orderData);
+    ordersStore.currentOrder = order;
 
     if (isDemoMode() && selectedPayment.value === 'mpesa') {
       await orderAPI.updateOrderStatus(order.id, { status: 'confirmed' });
+      ordersStore.currentOrder = { ...order, status: 'confirmed' };
       cartStore.clearCart();
       emit('payment-success', {
         ...order,

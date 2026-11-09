@@ -1,14 +1,20 @@
 <template>
   <section class="hero-shell" aria-label="Shop Kisaku everyday essentials">
-    <router-link to="/shop" class="hero-link" aria-label="Shop everyday essentials">
+    <a :href="banner?.link_url || '/shop'" class="hero-link" aria-label="Shop everyday essentials">
       <img
-        src="/Kisaku Everyday Essentials Delivered.png"
-        alt="Kisaku Supply Agencies: everyday products, great prices, delivered to you. Shop now."
+        :src="banner?.image_url || '/Kisaku Everyday Essentials Delivered.png'"
+        :alt="banner?.alt_text || banner?.title || 'Kisaku Supply Agencies: everyday products, great prices, delivered to you. Shop now.'"
         fetchpriority="high"
       />
-    </router-link>
+    </a>
   </section>
 </template>
+
+<script setup lang="ts">
+import type { StorefrontBanner } from '../../services/api';
+
+defineProps<{ banner?: StorefrontBanner }>();
+</script>
 
 <style scoped>
 .hero-shell {

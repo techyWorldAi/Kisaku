@@ -1,18 +1,27 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
+  Bell,
   ChevronDown,
+  ChevronRight,
+  Grid2X2,
+  Heart,
+  House,
   Menu as MenuIcon,
+  Package,
   Search,
   ShoppingCart,
   UserRound,
   X,
 } from 'lucide-vue-next';
-import { productAPI } from '../../services/api';
-import type { Category, Product } from '../../services/api';
+import { orderAPI, productAPI } from '../../services/api';
+import type { Category, Order, Product } from '../../services/api';
 import { useAuthStore } from '../../store/auth';
 import { useCartStore } from '../../store/cart';
+import { useOrdersStore } from '../../store/orders';
+import { useWishlistStore } from '../../store/wishlist';
+import { formatOrderNumber } from '../../utils/orderNumber';
 
 const menuItems = [
   { label: 'Home', to: '/' },
@@ -28,23 +37,37 @@ const menuItems = [
 const router = useRouter();
 const authStore = useAuthStore();
 const cartStore = useCartStore();
+const ordersStore = useOrdersStore();
+const wishlistStore = useWishlistStore();
 const mobileMenuOpen = ref(false);
 const categoriesOpen = ref(false);
 const searchQuery = ref('');
 const searchOpen = ref(false);
+const notificationPopupOpen = ref(false);
+const notificationOrders = ref<Order[]>([]);
+const notificationsLoading = ref(false);
+const notificationsError = ref('');
 const searchLoading = ref(false);
 const searchFailed = ref(false);
 const searchProducts = ref<Product[]>([]);
 const categories = ref<Category[]>([]);
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
+let ordersRequestId = 0;
 let categoriesLoaded = false;
 let searchProductsLoaded = false;
 
 const accountPath = computed(() => {
+  if (authStore.isSalesAgent) return '/admin/sales';
   if (authStore.canAccessAdmin) return '/admin/dashboard';
   if (authStore.isAuthenticated) return '/profile';
   return { path: '/login', query: { redirect: router.currentRoute.value.fullPath } };
 });
+const wishlistPath = computed(() => (authStore.isCustomer
+  ? { path: '/profile', query: { section: 'wishlist' } }
+  : authStore.isAuthenticated
+    ? accountPath.value
+    : { path: '/login', query: { redirect: '/profile?section=wishlist' } }));
+const categoriesTabPath = '/shop';
 const cartPath = computed(() => (authStore.isAuthenticated
   ? '/cart'
   : { path: '/login', query: { redirect: router.currentRoute.value.fullPath } }));
@@ -52,6 +75,13 @@ const accountLabel = computed(() => {
   if (!authStore.isAuthenticated) return 'Sign in';
   return authStore.user?.name.split(/\s+/)[0] || 'My account';
 });
+const customerId = computed(() => (authStore.isCustomer ? authStore.user?.id : undefined));
+const notificationCount = computed(() => notificationOrders.value.filter((order) => (
+  order.status === 'pending' || order.status === 'confirmed' || order.status === 'shipped'
+)).length);
+const recentNotifications = computed(() => [...notificationOrders.value]
+  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+  .slice(0, 5));
 const suggestions = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
   if (query.length < 2) return [];
@@ -67,11 +97,15 @@ function closeOverlays() {
   mobileMenuOpen.value = false;
   categoriesOpen.value = false;
   searchOpen.value = false;
+  notificationPopupOpen.value = false;
   cartStore.closeCartDropdown();
 }
 
 function handleOutsideClick(event: MouseEvent) {
   const target = event.target;
+  if (target instanceof Element && !target.closest('.account-control')) {
+    notificationPopupOpen.value = false;
+  }
   if (target instanceof Element && !target.closest('.header-search')) {
     searchOpen.value = false;
   }
@@ -85,6 +119,83 @@ function handleOutsideClick(event: MouseEvent) {
     mobileMenuOpen.value = false;
   }
 }
+
+function toggleNotificationPopup() {
+  notificationPopupOpen.value = !notificationPopupOpen.value;
+  searchOpen.value = false;
+  categoriesOpen.value = false;
+  mobileMenuOpen.value = false;
+  cartStore.closeCartDropdown();
+}
+
+function retryOrderNotifications() {
+  const userId = customerId.value;
+  if (userId !== undefined) void loadOrderNotifications(userId);
+}
+
+function notificationTitle(order: Order) {
+  const orderNumber = formatOrderNumber(order.id, order.order_number);
+  const update = {
+    pending: 'was placed',
+    confirmed: 'was confirmed',
+    shipped: 'is on its way',
+    delivered: 'was delivered',
+    cancelled: 'was cancelled',
+  }[order.status];
+  return `Order #${orderNumber} ${update}`;
+}
+
+function formatNotificationDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+async function loadOrderNotifications(userId: number) {
+  const requestId = ++ordersRequestId;
+  notificationsLoading.value = true;
+  notificationsError.value = '';
+
+  try {
+    const data = await orderAPI.getUserOrders();
+    if (requestId !== ordersRequestId || customerId.value !== userId) return;
+
+    const orders = Array.isArray(data) ? data : [];
+    const currentOrder = ordersStore.currentOrder;
+    notificationOrders.value = currentOrder?.user_id === userId
+      && !orders.some((order) => order.id === currentOrder.id)
+      ? [currentOrder, ...orders]
+      : orders;
+  } catch (error) {
+    if (requestId !== ordersRequestId || customerId.value !== userId) return;
+    console.error('Failed to load profile order notifications:', error);
+    notificationsError.value = 'Order updates are temporarily unavailable.';
+  } finally {
+    if (requestId === ordersRequestId) notificationsLoading.value = false;
+  }
+}
+
+watch(customerId, (userId) => {
+  notificationOrders.value = [];
+  notificationPopupOpen.value = false;
+  notificationsError.value = '';
+
+  if (userId === undefined) {
+    ordersRequestId += 1;
+    notificationsLoading.value = false;
+    return;
+  }
+
+  void loadOrderNotifications(userId);
+}, { immediate: true });
+
+watch(() => ordersStore.currentOrder, (order) => {
+  if (!order || !authStore.isCustomer || order.user_id !== authStore.user?.id) return;
+  notificationOrders.value = [
+    order,
+    ...notificationOrders.value.filter((existing) => existing.id !== order.id),
+  ];
+}, { immediate: true });
 
 async function loadSearchProducts() {
   if (searchProductsLoaded || searchLoading.value) return;
@@ -148,6 +259,16 @@ onUnmounted(() => {
 <template>
   <header class="header-main">
       <div class="header-row">
+        <button
+          class="mobile-menu-toggle"
+          type="button"
+          :aria-expanded="mobileMenuOpen"
+          aria-label="Toggle navigation menu"
+          @click="mobileMenuOpen = !mobileMenuOpen"
+        >
+          <X v-if="mobileMenuOpen" :size="22" />
+          <MenuIcon v-else :size="22" />
+        </button>
         <router-link to="/" class="brand" aria-label="Kisaku Supply Agencies home" @click="closeOverlays">
           <img
             class="brand-logo"
@@ -205,7 +326,74 @@ onUnmounted(() => {
           <router-link class="header-action desktop-action" to="/about" @click="closeOverlays">
             Help
           </router-link>
-          <router-link class="header-action account-action" :to="accountPath" @click="closeOverlays">
+          <div
+            v-if="authStore.isCustomer"
+            class="account-control"
+            @keydown.esc="notificationPopupOpen = false"
+          >
+            <button
+              class="header-action account-action"
+              type="button"
+              :aria-expanded="notificationPopupOpen"
+              aria-controls="profile-notifications"
+              :aria-label="`Open notifications${notificationCount ? `, ${notificationCount} active order updates` : ''}`"
+              @click.stop="toggleNotificationPopup"
+            >
+              <span class="account-icon-wrap">
+                <UserRound class="desktop-account-icon" :size="18" />
+                <Bell class="mobile-notification-icon" :size="19" />
+                <span v-if="notificationCount" class="notification-badge">
+                  {{ notificationCount > 99 ? '99+' : notificationCount }}
+                </span>
+              </span>
+              <span>{{ accountLabel }}</span>
+            </button>
+            <section
+              v-if="notificationPopupOpen"
+              id="profile-notifications"
+              class="notification-popover"
+              aria-label="Order notifications"
+            >
+              <header class="notification-popover-heading">
+                <strong>Notifications</strong>
+                <router-link to="/profile" @click="closeOverlays">My account</router-link>
+              </header>
+              <p v-if="notificationsLoading" class="notification-popover-message" role="status">
+                Loading your updates…
+              </p>
+              <div v-else-if="notificationsError" class="notification-popover-error" role="alert">
+                <span>{{ notificationsError }}</span>
+                <button type="button" @click.stop="retryOrderNotifications">Retry</button>
+              </div>
+              <div v-else-if="recentNotifications.length" class="notification-entries">
+                <router-link
+                  v-for="order in recentNotifications"
+                  :key="order.id"
+                  to="/orders"
+                  class="notification-entry"
+                  @click="closeOverlays"
+                >
+                  <span class="notification-entry-icon"><Package :size="17" aria-hidden="true" /></span>
+                  <span class="notification-entry-copy">
+                    <strong>{{ notificationTitle(order) }}</strong>
+                    <small>KSh {{ Number(order.total).toLocaleString() }}<template v-if="formatNotificationDate(order.created_at)"> · {{ formatNotificationDate(order.created_at) }}</template></small>
+                  </span>
+                  <ChevronRight :size="16" aria-hidden="true" />
+                </router-link>
+              </div>
+              <p v-else class="notification-popover-message">No order updates yet.</p>
+              <footer class="notification-popover-footer">
+                <router-link to="/orders" @click="closeOverlays">View all orders</router-link>
+                <router-link to="/about" @click="closeOverlays">Contact support</router-link>
+              </footer>
+            </section>
+          </div>
+          <router-link
+            v-else
+            class="header-action account-action"
+            :to="accountPath"
+            @click="closeOverlays"
+          >
             <UserRound :size="18" />
             <span>{{ accountLabel }}</span>
           </router-link>
@@ -216,16 +404,6 @@ onUnmounted(() => {
             </span>
             <span class="cart-label">Cart</span>
           </router-link>
-          <button
-            class="mobile-menu-toggle"
-            type="button"
-            :aria-expanded="mobileMenuOpen"
-            aria-label="Toggle navigation menu"
-            @click="mobileMenuOpen = !mobileMenuOpen"
-          >
-            <X v-if="mobileMenuOpen" :size="22" />
-            <MenuIcon v-else :size="22" />
-          </button>
         </div>
       </div>
   </header>
@@ -283,6 +461,38 @@ onUnmounted(() => {
       <router-link to="/orders" @click="closeOverlays">Track order</router-link>
     </div>
   </div>
+
+  <nav class="mobile-tab-bar" aria-label="Mobile shopping navigation">
+    <router-link to="/" class="mobile-tab" :class="{ active: router.currentRoute.value.path === '/' }">
+      <House :size="19" aria-hidden="true" />
+      <span>Home</span>
+    </router-link>
+    <router-link
+      :to="categoriesTabPath"
+      class="mobile-tab"
+      :class="{ active: router.currentRoute.value.path === '/shop' }"
+    >
+      <Grid2X2 :size="19" aria-hidden="true" />
+      <span>Categories</span>
+    </router-link>
+    <router-link :to="wishlistPath" class="mobile-tab">
+      <span class="mobile-tab-icon">
+        <Heart :size="19" aria-hidden="true" />
+        <span v-if="wishlistStore.count" class="mobile-tab-badge">
+          {{ wishlistStore.count > 99 ? '99+' : wishlistStore.count }}
+        </span>
+      </span>
+      <span>Wishlist</span>
+    </router-link>
+    <router-link
+      :to="accountPath"
+      class="mobile-tab"
+      :class="{ active: router.currentRoute.value.path === '/profile' }"
+    >
+      <UserRound :size="19" aria-hidden="true" />
+      <span>Profile</span>
+    </router-link>
+  </nav>
 </template>
 
 <style scoped>
@@ -464,6 +674,200 @@ onUnmounted(() => {
   color: #075397;
 }
 
+.account-control {
+  position: relative;
+}
+
+.account-action {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.account-icon-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  display: inline-flex;
+  min-width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #e11d48;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.notification-popover {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 13px);
+  right: 0;
+  width: min(360px, calc(100vw - 28px));
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgb(16 42 67 / 18%);
+  color: #102a43;
+}
+
+.notification-popover-heading,
+.notification-popover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 15px;
+}
+
+.notification-popover-heading {
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.notification-popover-heading a,
+.notification-popover-footer a {
+  color: #075397;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.notification-entries {
+  max-height: 310px;
+  overflow-y: auto;
+}
+
+.notification-entry {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 15px;
+  border-bottom: 1px solid #f1f5f9;
+  color: inherit;
+  text-decoration: none;
+}
+
+.notification-entry:hover {
+  background: #f8fafc;
+}
+
+.notification-entry-icon {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #075397;
+}
+
+.notification-entry-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 4px;
+}
+
+.notification-entry-copy strong {
+  overflow: hidden;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-entry-copy small,
+.notification-popover-message {
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.notification-popover-message {
+  margin: 0;
+  padding: 18px 15px;
+}
+
+.notification-popover-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 15px;
+  color: #b91c1c;
+  font-size: 0.75rem;
+}
+
+.notification-popover-error button {
+  padding: 5px 8px;
+  border: 1px solid #fecaca;
+  border-radius: 5px;
+  background: #fff;
+  color: #b91c1c;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.notification-popover-footer {
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+@media (max-width: 760px) {
+  .notification-popover {
+    position: fixed;
+    top: 134px;
+    right: max(12px, env(safe-area-inset-right));
+    left: max(12px, env(safe-area-inset-left));
+    width: auto;
+    max-height: calc(100dvh - 146px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .notification-entry {
+    min-height: 68px;
+    padding: 12px;
+  }
+
+  .notification-entry-copy strong {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .notification-popover-footer a {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+.mobile-notification-icon {
+  display: none;
+}
+
+.mobile-tab-bar {
+  display: none;
+}
+
 .cart-action {
   gap: 8px;
 }
@@ -625,61 +1029,77 @@ onUnmounted(() => {
 
   .header-row {
     min-height: 68px;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .mobile-menu-toggle {
+    display: inline-flex;
+    grid-column: 1;
+    grid-row: 1;
+    width: 38px;
+    height: 40px;
   }
 
   .brand-logo {
-    width: min(190px, 100%);
-    height: 58px;
+    width: min(170px, 100%);
+    height: 50px;
+    object-fit: contain;
+  }
+
+  .brand {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .header-actions {
+    grid-column: 3;
+    grid-row: 1;
   }
 
   .header-search {
     grid-row: 2;
     grid-column: 1 / -1;
-    height: 42px;
-    margin-bottom: 11px;
+    height: 40px;
+    margin-bottom: 10px;
   }
 
   .search-submit {
-    height: 40px;
+    height: 38px;
   }
 
   .header-actions {
-    gap: 11px;
+    gap: 5px;
   }
 
   .account-action,
-  .cart-action,
-  .mobile-menu-toggle {
-    min-width: 40px;
-    min-height: 42px;
+  .cart-action {
+    min-width: 38px;
+    min-height: 40px;
     justify-content: center;
   }
 
-  .account-action span,
+  .account-action > span:not(.account-icon-wrap),
   .cart-label {
     display: none;
   }
 
-  .mobile-menu-toggle {
-    display: inline-flex;
+  .desktop-account-icon {
+    display: none;
+  }
+
+  .mobile-notification-icon {
+    display: block;
   }
 
   .primary-nav {
-    min-height: 42px;
-  }
-
-  .nav-inner {
-    min-height: 42px;
-  }
-
-  .category-toggle {
-    min-height: 42px;
-  }
-
-  .desktop-links {
     display: none;
+  }
+
+  .site-header {
+    position: relative;
+    z-index: 31;
   }
 
   .mobile-navigation {
@@ -702,6 +1122,64 @@ onUnmounted(() => {
 
   .mobile-navigation a:hover {
     background: rgb(255 255 255 / 10%);
+  }
+
+  .mobile-tab-bar {
+    position: fixed;
+    z-index: 50;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 7px 8px max(7px, env(safe-area-inset-bottom));
+    border-top: 1px solid #e5e7eb;
+    background: rgb(255 255 255 / 97%);
+    box-shadow: 0 -4px 16px rgb(16 42 67 / 7%);
+    backdrop-filter: blur(12px);
+  }
+
+  .mobile-tab {
+    display: flex;
+    min-height: 48px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: #64748b;
+    font-size: 0.64rem;
+    font-weight: 650;
+    text-decoration: none;
+  }
+
+  .mobile-tab.active {
+    color: #075397;
+  }
+
+  .mobile-tab-icon {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .mobile-tab-badge {
+    position: absolute;
+    top: -7px;
+    right: -11px;
+    display: inline-flex;
+    min-width: 15px;
+    height: 15px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    border-radius: 999px;
+    background: #e11d48;
+    color: #fff;
+    font-size: 0.56rem;
+    font-weight: 800;
+  }
+
+  :global(body) {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
   }
 }
 

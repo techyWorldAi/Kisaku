@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   ClipboardList,
@@ -7,6 +7,9 @@ import {
   LogOut,
   Menu,
   Package,
+  PanelsTopLeft,
+  ScrollText,
+  ShoppingBasket,
   UserRoundCog,
   Users,
   X,
@@ -22,10 +25,20 @@ const mobileOpen = ref(false);
 const navigation = [
   { label: 'Dashboard', to: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Orders', to: '/admin/orders', icon: ClipboardList },
+  { label: 'Sales orders', to: '/admin/sales', icon: ShoppingBasket, salesAccess: true },
   { label: 'Products', to: '/admin/products', icon: Package },
+  { label: 'Storefront', to: '/admin/storefront', icon: PanelsTopLeft, adminOnly: true },
+  { label: 'Audit logs', to: '/admin/audit-logs', icon: ScrollText, adminOnly: true },
   { label: 'Accounts', to: '/admin/users', icon: Users },
   { label: 'Employees', to: '/admin/users?view=employees', icon: UserRoundCog },
 ];
+const visibleNavigation = computed(() =>
+  navigation.filter((item) => (
+    (!item.adminOnly || authStore.isAdmin)
+    && (!item.salesAccess || authStore.canAccessSales)
+    && (item.salesAccess || authStore.canAccessAdmin)
+  )),
+);
 
 function signOut() {
   authStore.logout();
@@ -66,7 +79,7 @@ function signOut() {
     <p class="nav-caption">WORKSPACE</p>
     <nav class="admin-nav" aria-label="Administration">
       <router-link
-        v-for="item in navigation"
+        v-for="item in visibleNavigation"
         :key="item.to"
         :to="item.to"
         class="admin-nav-link"
@@ -86,7 +99,7 @@ function signOut() {
         <span class="avatar">{{ authStore.user?.name?.slice(0, 1).toUpperCase() ?? 'S' }}</span>
         <span class="signed-in-copy">
           <strong>{{ authStore.user?.name ?? 'Staff member' }}</strong>
-          <small>{{ authStore.isAdmin ? 'Administrator' : 'Staff' }}</small>
+          <small>{{ authStore.isAdmin ? 'Administrator' : authStore.isSalesAgent ? 'Sales agent' : 'Staff' }}</small>
         </span>
       </div>
       <button class="logout-button" type="button" @click="signOut">

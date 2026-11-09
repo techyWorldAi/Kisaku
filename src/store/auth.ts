@@ -79,7 +79,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAdmin = computed(() => user.value?.role === 'admin');
   const isStaff = computed(() => user.value?.role === 'staff');
+  const isSalesAgent = computed(() => user.value?.role === 'sales_agent');
   const canAccessAdmin = computed(() => isAdmin.value || isStaff.value);
+  const canAccessSales = computed(() => isAdmin.value || isSalesAgent.value);
   const isCustomer = computed(() => user.value?.role === 'customer');
 
   // Initialize when store is created
@@ -91,7 +93,9 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     isAdmin,
     isStaff,
+    isSalesAgent,
     canAccessAdmin,
+    canAccessSales,
     isCustomer,
     login,
     signup,

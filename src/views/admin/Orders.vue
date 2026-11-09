@@ -97,7 +97,10 @@
               <!-- Order ID -->
               <div class="col-span-2">
                 <span class="admin-mobile-label">Order</span>
-                <span class="text-sm font-semibold text-gray-900">#{{ order.id }}</span>
+                <span class="text-sm font-semibold text-gray-900">#{{ formatOrderNumber(order.id, order.order_number) }}</span>
+                <span v-if="order.order_tag" class="ml-1 inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">
+                  {{ order.order_tag.startsWith('CS-') ? 'Sales assisted' : order.order_tag }}
+                </span>
                 <p class="text-xs text-gray-500">{{ formatDate(order.created_at) }}</p>
               </div>
 
@@ -199,7 +202,7 @@
           <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-4xl border border-gray-200/60">
             <!-- Header -->
             <div class="bg-gradient-to-r from-yellow-500 to-orange-500 px-6 py-4 rounded-t-2xl flex justify-between items-center">
-              <h3 class="text-lg font-semibold text-white">Order Details - #{{ selectedOrder.id }}</h3>
+              <h3 class="text-lg font-semibold text-white">Order Details - #{{ formatOrderNumber(selectedOrder.id, selectedOrder.order_number) }}</h3>
               <button @click="selectedOrder = null" class="text-white hover:text-yellow-200">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -296,6 +299,7 @@ import { useAuthStore } from '../../store/auth';
 import { orderAPI } from '../../services/api';
 import type { Order } from '../../services/api';
 import AdminSidebar from '../../components/admin/AdminSidebar.vue';
+import { formatOrderNumber } from '../../utils/orderNumber';
 
 const authStore = useAuthStore();
 const router = useRouter();

@@ -47,7 +47,10 @@
               <!-- Order Info -->
               <div class="flex-1">
                 <div class="flex flex-wrap items-center gap-3 mb-3">
-                  <h3 class="text-lg font-semibold text-gray-900">Order #{{ order.id }}</h3>
+                  <h3 class="text-lg font-semibold text-gray-900">Order #{{ formatOrderNumber(order.id, order.order_number) }}</h3>
+                  <span v-if="order.order_tag" class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-800">
+                    {{ order.order_tag.startsWith('CS-') ? 'Sales assisted' : order.order_tag }}
+                  </span>
                   <span :class="[
                     'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium',
                     getStatusClasses(order.status)
@@ -112,7 +115,7 @@
           <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-gray-200/60">
             <!-- Header -->
             <div class="bg-gradient-to-r from-yellow-500 to-orange-500 px-4 sm:px-6 py-4 rounded-t-2xl flex justify-between items-center gap-3">
-              <h3 class="text-base sm:text-lg font-semibold text-white break-words">Order Details - #{{ selectedOrder.id }}</h3>
+              <h3 class="text-base sm:text-lg font-semibold text-white break-words">Order Details - #{{ formatOrderNumber(selectedOrder.id, selectedOrder.order_number) }}</h3>
               <button @click="selectedOrder = null" class="text-white hover:text-yellow-200">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -218,6 +221,7 @@ import { useAuthStore } from '../store/auth';
 import { orderAPI } from '../services/api';
 import type { Order } from '../services/api';
 import Header from '../components/layout/Menu.vue';
+import { formatOrderNumber } from '../utils/orderNumber';
 
 const authStore = useAuthStore();
 const router = useRouter();

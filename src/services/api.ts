@@ -15,6 +15,8 @@ import {
   updateDemoOrderStatus,
 } from './demoStore';
 
+export { isDemoMode };
+
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://api.fuze.co.ke/api').replace(/\/+$/, '');
 
 // Create axios instance with better configuration
@@ -91,6 +93,7 @@ export interface User {
   role: string;
   created_at: string;
   ordersCount?: number;
+  phone_number?: string;
 }
 
 export interface AuthResponse {
@@ -116,6 +119,50 @@ export interface Category {
   description: string;
   created_at?: string;
 }
+
+export interface StoreSettings {
+  store_name: string;
+  tagline?: string;
+  description?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  contact_address?: string;
+  social: Record<string, string>;
+}
+
+export interface StorefrontBanner {
+  id: number;
+  title: string;
+  image_url: string;
+  alt_text?: string;
+  link_url?: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface StorefrontSection {
+  id: number;
+  section_key: string;
+  type: string;
+  title?: string;
+  sort_order: number;
+  is_visible: boolean;
+  config: Record<string, unknown>;
+}
+
+export interface PublishedStorefront {
+  settings: StoreSettings;
+  sections: StorefrontSection[];
+  banners: StorefrontBanner[];
+}
+
+export interface AdminStorefront {
+  draft: PublishedStorefront;
+  published: PublishedStorefront | null;
+}
+
+export type StorefrontBannerInput = Omit<StorefrontBanner, 'id'>;
+export type StorefrontSectionInput = Omit<StorefrontSection, 'id'>;
 
 export interface Product {
   id: number;
@@ -159,16 +206,31 @@ export interface UpdateProductRequest {
 // Order related interfaces
 export interface Order {
   id: number;
+  order_number?: string;
+  order_tag?: string;
+  tag?: string;
+  source?: string;
+  sales_agent_id?: number;
+  assisted_by?: number;
   user_id: number;
   user?: User;
   total: number;
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
   payment_method?: string;
   delivery_method?: string;
+  delivery_address?: OrderDeliveryAddress;
   mpesa_receipt?: string;
   phone_number?: string;
   created_at: string;
   order_items?: OrderItem[];
+}
+
+export interface OrderDeliveryAddress {
+  name: string;
+  email: string;
+  phone: string;
+  street: string;
+  city: string;
 }
 
 export interface AdminDashboardSummary {
@@ -219,6 +281,7 @@ export interface OrderItem {
 
 export interface CreateOrderRequest {
   items: OrderItemRequest[];
+  delivery_address?: OrderDeliveryAddress;
   phone_number?: string;
   total?: number;
   payment_method?: string;
@@ -232,6 +295,97 @@ export interface OrderItemRequest {
 
 export interface UpdateOrderStatusRequest {
   status: Order['status'];
+}
+
+export interface SalesCustomer {
+  id: number;
+  name: string;
+  email: string;
+  phone_number?: string;
+}
+
+export type EmployeeRole = 'sales_agent' | 'vendor_support' | 'finance' | 'logistics';
+
+export interface CreateEmployeeRequest {
+  name: string;
+  email: string;
+  password: string;
+  role: EmployeeRole;
+}
+
+export interface CreateSalesOrderRequest {
+  customer_id?: number;
+  customer_email?: string;
+  items: OrderItemRequest[];
+  phone_number?: string;
+  delivery_method?: string;
+  payment_method?: string;
+}
+
+export interface AuditLogRecord {
+  id?: number | string;
+  actor_id?: number | null;
+  action?: string;
+  event?: string;
+  actor?: User | string;
+  actor_name?: string;
+  actor_email?: string;
+  target?: unknown;
+  target_type?: string;
+  target_id?: number | string;
+  details?: unknown;
+  metadata?: unknown;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+function unwrapResponseData(value: unknown): unknown {
+  if (typeof value === 'object' && value !== null && 'data' in value) {
+    return (value as { data: unknown }).data;
+  }
+  return value;
+}
+
+function parseResponseList<T>(value: unknown, key: string, label: string): T[] {
+  let payload = unwrapResponseData(value);
+  if (typeof payload === 'object' && payload !== null && key in payload) {
+    payload = (payload as Record<string, unknown>)[key];
+  }
+  if (!Array.isArray(payload)) {
+    throw new Error(`The ${label} endpoint returned an unsupported response.`);
+  }
+  return payload as T[];
+}
+
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = (error as { response?: { data?: { error?: unknown } } }).response;
+    if (typeof response?.data?.error === 'string') return response.data.error;
+  }
+  return error instanceof Error ? error.message : fallback;
+}
+
+function parseSalesCustomer(value: unknown): value is SalesCustomer {
+  if (typeof value !== 'object' || value === null) return false;
+  const customer = value as Record<string, unknown>;
+  return typeof customer.id === 'number'
+    && typeof customer.name === 'string'
+    && typeof customer.email === 'string';
+}
+
+function parseSalesOrder(value: unknown): Order {
+  let payload = unwrapResponseData(value);
+  if (typeof payload === 'object' && payload !== null && 'order' in payload) {
+    payload = (payload as { order: unknown }).order;
+  }
+  if (typeof payload !== 'object' || payload === null) {
+    throw new Error('The sales order endpoint returned an unsupported response.');
+  }
+  const order = payload as Record<string, unknown>;
+  if (typeof order.id !== 'number' || typeof order.total !== 'number' || typeof order.status !== 'string') {
+    throw new Error('The sales order endpoint returned an incomplete order.');
+  }
+  return order as unknown as Order;
 }
 
 export const authAPI = {
@@ -442,7 +596,181 @@ export const orderAPI = {
   },
 };
 
+export const salesAPI = {
+  getCustomers: async (query: string): Promise<SalesCustomer[]> => {
+    const response = await api.get('/sales/customers', { params: { q: query } });
+    const customers = parseResponseList<unknown>(response.data, 'customers', 'sales customers');
+    if (!customers.every(parseSalesCustomer)) {
+      throw new Error('The sales customers endpoint returned invalid customer records.');
+    }
+    return customers;
+  },
+
+  createOrder: async (order: CreateSalesOrderRequest): Promise<Order> => {
+    const response = await api.post('/sales/orders', order);
+    return parseSalesOrder(response.data);
+  },
+};
+
+export const auditAPI = {
+  getAuditLogs: async (): Promise<AuditLogRecord[]> => {
+    const response = await api.get('/admin/audit-logs');
+    return parseResponseList<AuditLogRecord>(response.data, 'logs', 'admin audit logs');
+  },
+};
+
+function parseStorefrontSnapshot(value: unknown, label: string): PublishedStorefront {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error(`The ${label} endpoint returned an unsupported storefront.`);
+  }
+  const snapshot = value as Record<string, unknown>;
+  if (
+    typeof snapshot.settings !== 'object'
+    || snapshot.settings === null
+    || !Array.isArray(snapshot.sections)
+    || !Array.isArray(snapshot.banners)
+  ) {
+    throw new Error(`The ${label} endpoint returned an incomplete storefront.`);
+  }
+  return snapshot as unknown as PublishedStorefront;
+}
+
+export const storefrontAPI = {
+  getPublished: async (): Promise<PublishedStorefront> => {
+    const response = await api.get('/storefront');
+    return parseStorefrontSnapshot(unwrapResponseData(response.data), 'public storefront');
+  },
+
+  getAdminState: async (): Promise<AdminStorefront> => {
+    const response = await api.get('/admin/storefront');
+    const payload = unwrapResponseData(response.data);
+    if (typeof payload !== 'object' || payload === null || !('draft' in payload)) {
+      throw new Error('The admin storefront endpoint returned an unsupported response.');
+    }
+    const state = payload as Record<string, unknown>;
+    const draft = parseStorefrontSnapshot(state.draft, 'admin storefront draft');
+    const published = state.published === null || state.published === undefined
+      ? null
+      : parseStorefrontSnapshot(state.published, 'published storefront');
+    return { draft, published };
+  },
+
+  saveSettings: async (settings: StoreSettings): Promise<void> => {
+    await api.put('/admin/storefront/settings', settings);
+  },
+
+  publish: async (): Promise<void> => {
+    await api.post('/admin/storefront/publish');
+  },
+
+  getBanners: async (): Promise<StorefrontBanner[]> => {
+    const response = await api.get('/admin/storefront/banners');
+    return parseResponseList<StorefrontBanner>(response.data, 'banners', 'storefront banners');
+  },
+
+  createBanner: async (banner: StorefrontBannerInput): Promise<StorefrontBanner> => {
+    const response = await api.post('/admin/storefront/banners', banner);
+    return unwrapResponseData(response.data) as StorefrontBanner;
+  },
+
+  updateBanner: async (id: number, banner: Partial<StorefrontBannerInput>): Promise<StorefrontBanner> => {
+    const response = await api.put(`/admin/storefront/banners/${id}`, banner);
+    return unwrapResponseData(response.data) as StorefrontBanner;
+  },
+
+  deleteBanner: async (id: number): Promise<void> => {
+    await api.delete(`/admin/storefront/banners/${id}`);
+  },
+
+  reorderBanners: async (ids: number[]): Promise<void> => {
+    await api.put('/admin/storefront/banners/reorder', { ids });
+  },
+
+  getSections: async (): Promise<StorefrontSection[]> => {
+    const response = await api.get('/admin/storefront/sections');
+    return parseResponseList<StorefrontSection>(response.data, 'sections', 'storefront sections');
+  },
+
+  createSection: async (section: StorefrontSectionInput): Promise<StorefrontSection> => {
+    const response = await api.post('/admin/storefront/sections', section);
+    return unwrapResponseData(response.data) as StorefrontSection;
+  },
+
+  updateSection: async (id: number, section: Partial<StorefrontSectionInput>): Promise<StorefrontSection> => {
+    const response = await api.put(`/admin/storefront/sections/${id}`, section);
+    return unwrapResponseData(response.data) as StorefrontSection;
+  },
+
+  deleteSection: async (id: number): Promise<void> => {
+    await api.delete(`/admin/storefront/sections/${id}`);
+  },
+
+  reorderSections: async (ids: number[]): Promise<void> => {
+    await api.put('/admin/storefront/sections/reorder', { ids });
+  },
+
+  uploadImage: async (file: File, kind: string): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('kind', kind);
+    const response = await api.post('/admin/uploads', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    const payload = unwrapResponseData(response.data);
+    if (typeof payload === 'string') return payload;
+    if (typeof payload === 'object' && payload !== null) {
+      const upload = payload as Record<string, unknown>;
+      if (typeof upload.url === 'string') return upload.url;
+      if (typeof upload.image_url === 'string') return upload.image_url;
+    }
+    throw new Error('The image upload endpoint did not return an image URL.');
+  },
+};
+
+export const adminCategoriesAPI = {
+  getAll: async (): Promise<Category[]> => {
+    const response = await api.get('/admin/categories');
+    return parseResponseList<Category>(response.data, 'categories', 'admin categories');
+  },
+
+  create: async (category: Pick<Category, 'name' | 'description'>): Promise<Category> => {
+    const response = await api.post('/admin/categories', category);
+    return unwrapResponseData(response.data) as Category;
+  },
+
+  update: async (id: number, category: Partial<Pick<Category, 'name' | 'description'>>): Promise<Category> => {
+    const response = await api.put(`/admin/categories/${id}`, category);
+    return unwrapResponseData(response.data) as Category;
+  },
+
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/admin/categories/${id}`);
+  },
+};
+
 export const adminAPI = {
+  createEmployee: async (account: CreateEmployeeRequest): Promise<User> => {
+    if (isDemoMode()) {
+      throw new Error('Employee accounts cannot be created in local demo mode.');
+    }
+
+    const response = await api.post('/admin/users', account);
+    const payload = unwrapResponseData(response.data);
+    if (typeof payload !== 'object' || payload === null) {
+      throw new Error('The employee creation endpoint returned an unsupported response.');
+    }
+    const user = payload as Record<string, unknown>;
+    if (
+      typeof user.id !== 'number'
+      || typeof user.name !== 'string'
+      || typeof user.email !== 'string'
+      || user.role !== account.role
+    ) {
+      throw new Error('The employee creation endpoint returned an invalid account.');
+    }
+    return payload as User;
+  },
+
   getDashboardSummary: async (from: string, to: string): Promise<AdminDashboardSummary> => {
     if (isDemoMode()) return getDemoDashboardSummary(from, to);
 

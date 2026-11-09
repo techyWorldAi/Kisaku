@@ -9,7 +9,7 @@
     <h2 class="text-2xl font-bold text-gray-900 mb-2">Order Confirmed!</h2>
     <p class="text-gray-600 mb-4">
       Thank you for your order. Your order number is 
-      <strong class="text-[#155DA5]">#{{ props.order?.id }}</strong>
+      <strong class="text-[#155DA5]">{{ props.order ? formatOrderNumber(props.order.id, props.order.order_number) : '' }}</strong>
     </p>
     
     <div class="bg-gray-50 rounded-xl p-6 max-w-md mx-auto mb-6">
@@ -18,7 +18,7 @@
       <div class="space-y-3 text-left">
         <div class="flex justify-between">
           <span class="text-gray-600">Order Number:</span>
-          <span class="font-medium text-gray-900">#{{ props.order?.id }}</span>
+          <span class="font-medium text-gray-900">{{ props.order ? formatOrderNumber(props.order.id, props.order.order_number) : '' }}</span>
         </div>
         <div class="flex justify-between">
           <span class="text-gray-600">Payment Method:</span>
@@ -81,6 +81,7 @@
 <script setup lang="ts">
 // import { computed } from 'vue';
 import type { Order } from '../../services/api';
+import { formatOrderNumber } from '../../utils/orderNumber';
 
 interface Props {
   order: Order & { payment_method?: string; delivery_method?: string } | null;
@@ -123,7 +124,7 @@ const downloadReceipt = () => {
 T-SHOP RECEIPT
 ================================
 
-Order Number: #${props.order.id}
+Order Number: ${formatOrderNumber(props.order.id, props.order.order_number)}
 Order Date: ${new Date(props.order.created_at).toLocaleDateString()}
 Payment Method: ${getPaymentMethodDisplay(props.order.payment_method)}
 

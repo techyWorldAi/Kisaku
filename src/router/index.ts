@@ -44,6 +44,24 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresStaff: true }
     },
     {
+      path: '/admin/storefront',
+      name: 'AdminStorefront',
+      component: () => import('../views/admin/Storefront.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/sales',
+      name: 'AdminSales',
+      component: () => import('../views/admin/SalesOrders.vue'),
+      meta: { requiresAuth: true, requiresSales: true }
+    },
+    {
+      path: '/admin/audit-logs',
+      name: 'AdminAuditLogs',
+      component: () => import('../views/admin/AuditLogs.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
       path: '/shop',
       name: 'Shop',
       component: () => import('../views/ShopPage.vue'),
@@ -111,10 +129,17 @@ router.beforeEach(async (to) => {
     return { name: 'Login', query: { redirect: to.fullPath } };
   }
   if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    return safeRedirect ?? (authStore.canAccessAdmin ? '/admin/dashboard' : '/');
+    return safeRedirect ?? (
+      authStore.isSalesAgent
+        ? '/admin/sales'
+        : authStore.canAccessAdmin
+          ? '/admin/dashboard'
+          : '/'
+    );
   }
   if (to.meta.requiresStaff && !authStore.canAccessAdmin) return '/profile';
   if (to.meta.requiresAdmin && !authStore.isAdmin) return '/profile';
+  if (to.meta.requiresSales && !authStore.canAccessSales) return '/profile';
 });
 
 export default router;

@@ -152,9 +152,12 @@ async function handleLogin() {
       && !['/login', '/signup'].includes(redirect)
       ? redirect
       : null;
-    await router.push(safeRedirect ?? (authResponse.user.role === 'admin' || authResponse.user.role === 'staff'
-      ? '/admin/dashboard'
-      : '/'));
+    const defaultDestination = authResponse.user.role === 'sales_agent'
+      ? '/admin/sales'
+      : authResponse.user.role === 'admin' || authResponse.user.role === 'staff'
+        ? '/admin/dashboard'
+        : '/';
+    await router.push(safeRedirect ?? defaultDestination);
   } catch (err: any) {
     if (err.response?.data?.error) {
       error.value = err.response.data.error;

@@ -178,7 +178,7 @@ onMounted(() => {
       <header class="section-heading">
         <div>
           <p class="eyebrow">Find what you need</p>
-          <h2>Shop by category</h2>
+          <h2><span class="desktop-section-title">Shop by category</span><span class="mobile-section-title">Categories</span></h2>
         </div>
         <router-link to="/shop" class="section-link">
           Browse all <ArrowRight :size="16" />
@@ -214,7 +214,7 @@ onMounted(() => {
       <header class="section-heading">
         <div>
           <p class="eyebrow">Selected from our live catalogue</p>
-          <h2>Featured products</h2>
+          <h2><span class="desktop-section-title">Featured products</span><span class="mobile-section-title">Top picks</span></h2>
         </div>
         <router-link to="/shop" class="section-link">
           View all products <ArrowRight :size="16" />
@@ -370,6 +370,10 @@ onMounted(() => {
   justify-content: space-between;
   gap: 20px;
   margin-bottom: 16px;
+}
+
+.mobile-section-title {
+  display: none;
 }
 
 .eyebrow {
@@ -877,26 +881,69 @@ onMounted(() => {
 @media (max-width: 760px) {
   .catalog-shell {
     width: calc(100% - 28px);
-    padding: 30px 0 38px;
+    padding: 20px 0 28px;
   }
 
   .catalog-section + .catalog-section {
-    margin-top: 32px;
+    margin-top: 24px;
   }
 
   .category-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 9px;
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 2px 1px 8px;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+  }
+
+  .category-grid::-webkit-scrollbar,
+  .product-grid::-webkit-scrollbar {
+    display: none;
   }
 
   .category-card {
-    min-height: 130px;
+    min-height: 94px;
+    flex: 0 0 82px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #edf0f3;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgb(16 42 67 / 5%);
+    color: #334155;
+    scroll-snap-align: start;
+  }
+
+  .category-image,
+  .category-overlay {
+    display: none;
   }
 
   .category-content {
-    gap: 6px;
-    padding: 11px 9px;
-    font-size: 0.75rem;
+    flex-direction: column;
+    gap: 7px;
+    padding: 9px 5px;
+    text-align: center;
+    font-size: 0.65rem;
+  }
+
+  .category-content > :last-child {
+    display: none;
+  }
+
+  .category-content > :first-child {
+    width: 25px;
+    height: 25px;
+    color: #155da5;
+  }
+
+  .category-content span {
+    display: -webkit-box;
+    overflow: hidden;
+    line-height: 1.2;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   .featured-layout {
@@ -904,7 +951,7 @@ onMounted(() => {
   }
 
   .catalog-promo {
-    min-height: 180px;
+    min-height: 150px;
   }
 }
 
@@ -915,38 +962,72 @@ onMounted(() => {
   }
 
   .section-heading h2 {
-    font-size: 1.35rem;
+    font-size: 1.05rem;
+  }
+
+  .desktop-section-title {
+    display: none;
+  }
+
+  .mobile-section-title {
+    display: inline;
   }
 
   .section-link {
-    padding-top: 15px;
-    font-size: 0.77rem;
+    padding-top: 4px;
+    font-size: 0.7rem;
   }
 
-  .category-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .category-card {
-    min-height: 122px;
+  .eyebrow {
+    margin-bottom: 3px;
+    font-size: 0.62rem;
   }
 
   .product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 9px;
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 2px 1px 10px;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+  }
+
+  .product-card,
+  .product-skeleton {
+    flex: 0 0 43%;
+    scroll-snap-align: start;
+    border: 1px solid #edf0f3;
+    border-radius: 11px;
+    box-shadow: 0 2px 10px rgb(16 42 67 / 6%);
+  }
+
+  .product-media {
+    aspect-ratio: 1 / 0.9;
   }
 
   .product-info {
-    padding: 10px;
+    padding: 8px;
   }
 
   .product-title {
-    min-height: 38px;
-    font-size: 0.8rem;
+    min-height: 34px;
+    font-size: 0.72rem;
   }
 
   .product-price {
-    font-size: 0.95rem;
+    font-size: 0.78rem;
+  }
+
+  .product-category,
+  .product-rating {
+    display: none;
+  }
+
+  .product-card-actions .product-action {
+    min-height: 34px;
+    gap: 4px;
+    padding: 6px 4px;
+    font-size: 0.62rem;
   }
 
   .add-button {

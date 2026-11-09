@@ -99,7 +99,7 @@
                     </thead>
                     <tbody>
                       <tr v-for="order in recentOrders" :key="order.id">
-                        <td data-label="Order #">KS{{ formatOrderId(order.id) }}</td>
+                        <td data-label="Order #">{{ formatOrderNumber(order.id, order.order_number) }}</td>
                         <td data-label="Date">{{ formatDateTime(order.created_at) }}</td>
                         <td data-label="Status">
                           <span class="order-status" :class="`status-${order.status}`">
@@ -255,7 +255,7 @@
           <div v-else-if="userOrders.length" class="notification-list">
             <article v-for="order in sortedOrders" :key="order.id" class="account-panel notification-item">
               <span class="notification-icon"><Package :size="19" /></span>
-              <div><strong>Order #{{ order.id }} — {{ order.status }}</strong><p>Order total: KSh {{ order.total.toLocaleString() }} · {{ formatDate(order.created_at) }}</p></div>
+              <div><strong>Order #{{ formatOrderNumber(order.id, order.order_number) }} — {{ order.status }}</strong><p>Order total: KSh {{ order.total.toLocaleString() }} · {{ formatDate(order.created_at) }}</p></div>
               <router-link to="/orders">View order</router-link>
             </article>
           </div>
@@ -275,8 +275,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import {
   ArrowRight,
   BadgeCheck,
@@ -306,6 +306,7 @@ import { orderAPI, productAPI } from '../services/api';
 import type { Order, Product } from '../services/api';
 import { useAuthStore } from '../store/auth';
 import { useWishlistStore } from '../store/wishlist';
+import { formatOrderNumber } from '../utils/orderNumber';
 
 type AccountSection = 'dashboard' | 'addresses' | 'wishlist' | 'settings' | 'notifications';
 
@@ -322,6 +323,7 @@ interface SavedAddress {
 const authStore = useAuthStore();
 const wishlistStore = useWishlistStore();
 const router = useRouter();
+const route = useRoute();
 const activeSection = ref<AccountSection>('dashboard');
 const userOrders = ref<Order[]>([]);
 const products = ref<Product[]>([]);
@@ -349,6 +351,13 @@ const accountNavigation = [
   { id: 'settings' as const, label: 'Account settings', icon: Settings },
   { id: 'notifications' as const, label: 'Notifications', icon: Bell },
 ];
+
+watch(() => route.query.section, (section) => {
+  const validSections: AccountSection[] = ['dashboard', 'addresses', 'wishlist', 'settings', 'notifications'];
+  activeSection.value = typeof section === 'string' && validSections.includes(section as AccountSection)
+    ? section as AccountSection
+    : 'dashboard';
+}, { immediate: true });
 
 const sortedOrders = computed(() => [...userOrders.value].sort(
   (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
@@ -502,10 +511,6 @@ function formatDateTime(value?: string) {
     hour: 'numeric',
     minute: '2-digit',
   });
-}
-
-function formatOrderId(id: string | number) {
-  return String(id).replace(/\D/g, '').slice(-8).padStart(8, '0');
 }
 
 function handleLogout() {
