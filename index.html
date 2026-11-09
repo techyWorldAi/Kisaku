@@ -1,24 +1,108 @@
+
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/Kisaku_Supply_Agencies_Logo-removebg-preview.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ffffff" />
-    <title>Kisaku Supply Agencies</title>
 
-    <!-- Corrected SPA Routing Parameter Recovery script -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary SEO -->
+    <title>
+      Kisaku Supply Agencies | Trusted Sourcing & Supply Partner in Kenya
+    </title>
+
+    <meta
+      name="description"
+      content="Kisaku Supply Agencies connects businesses and customers with verified suppliers across Kenya. Discover quality products, competitive pricing and reliable sourcing solutions."
+    />
+
+    <meta name="robots" content="index, follow" />
+
+    <meta name="theme-color" content="#ffffff" />
+
+    <link
+      rel="canonical"
+      href="https://kisakusupplyagencies.co.ke/"
+    />
+
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      type="image/png"
+      href="/Kisaku_Supply_Agencies_Logo-removebg-preview.png"
+    />
+
+    <!-- Open Graph / Facebook / WhatsApp -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Kisaku Supply Agencies" />
+    <meta
+      property="og:title"
+      content="Kisaku Supply Agencies | Trusted Sourcing & Supply Partner"
+    />
+    <meta
+      property="og:description"
+      content="Your Trusted Sourcing & Supply Partner. Connect with verified suppliers and discover reliable sourcing solutions across Kenya."
+    />
+    <meta
+      property="og:url"
+      content="https://kisakusupplyagencies.co.ke/"
+    />
+    <meta
+      property="og:image"
+      content="https://kisakusupplyagencies.co.ke/og-image.png"
+    />
+    <meta property="og:image:alt" content="Kisaku Supply Agencies" />
+    <meta property="og:locale" content="en_KE" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Kisaku Supply Agencies"
+    />
+    <meta
+      name="twitter:description"
+      content="Your Trusted Sourcing & Supply Partner in Kenya."
+    />
+    <meta
+      name="twitter:image"
+      content="https://kisakusupplyagencies.co.ke/og-image.png"
+    />
+
+    <!-- Business Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Kisaku Supply Agencies",
+        "url": "https://kisakusupplyagencies.co.ke/",
+        "logo": "https://kisakusupplyagencies.co.ke/Kisaku_Supply_Agencies_Logo-removebg-preview.png",
+        "description": "Kisaku Supply Agencies is a sourcing and supply business connecting customers and businesses with verified suppliers across Kenya.",
+        "areaServed": {
+          "@type": "Country",
+          "name": "Kenya"
+        }
+      }
+    </script>
+
+    <!-- SPA Routing Parameter Recovery -->
     <script type="text/javascript">
       (function(l) {
         if (l.search[1] === 'p' && l.search[2] === '=') {
           var decodedPath = l.search.slice(3)
             .split('&')[0]
-            .replace(/~and~/g, '&');
-          window.history.replaceState(null, null, l.pathname.slice(0, -1) + '/' + decodedPath + l.hash);
+            .replace(/\~and\~/g, '&');
+
+          window.history.replaceState(
+            null,
+            null,
+            l.pathname.slice(0, -1) + '/' + decodedPath + l.hash
+          );
         }
       }(window.location));
     </script>
   </head>
+
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
