@@ -3,26 +3,21 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   ArrowRight,
-  BadgeCheck,
   CarFront,
-  CreditCard,
-  Headphones,
   Heart,
   House,
   MonitorSmartphone,
-  PackageCheck,
   RefreshCw,
   ShoppingBag,
   ShoppingCart,
   Sparkles,
   Star,
-  Truck,
 } from 'lucide-vue-next';
 import { useAuthStore } from '../../store/auth';
 import { useCartStore } from '../../store/cart';
 import { useWishlistStore } from '../../store/wishlist';
-import { productAPI } from '../../services/api';
-import type { Category, Product } from '../../services/api';
+import { productAPI, storefrontAPI } from '../../services/api';
+import type { Category, Product, StorefrontSection } from '../../services/api';
 
 const categoryDefinitions = [
   {
@@ -59,6 +54,12 @@ const categoryDefinitions = [
 
 const products = ref<Product[]>([]);
 const categories = ref<Category[]>([]);
+const categorySection = ref<StorefrontSection | null>(null);
+const props = defineProps<{
+  preview?: boolean;
+  previewCategorySection?: StorefrontSection | null;
+  showProducts?: boolean;
+}>();
 const loading = ref(true);
 const loadError = ref(false);
 const unavailableImages = ref(new Set<number>());
@@ -70,29 +71,49 @@ const cartStore = useCartStore();
 const wishlistStore = useWishlistStore();
 let feedbackTimeout: ReturnType<typeof setTimeout> | undefined;
 
-const categoryCards = computed(() =>
-  categoryDefinitions.map((definition) => {
-    const category = categories.value.find((item) => {
-      const name = item.name.toLowerCase();
-      return definition.keys.some((key) => name.includes(key));
-    });
+const categoryHeading = computed(() => ({
+  title: typeof categorySection.value?.title === 'string' && categorySection.value.title.trim()
+    ? categorySection.value.title
+    : 'Shop by category',
+}));
+
+const categoryCards = computed(() => {
+  const limit = categorySection.value?.config.limit;
+  const visibleCategories = categories.value.length
+    ? categories.value.slice(0, typeof limit === 'number' && limit > 0 ? limit : categories.value.length)
+    : categoryDefinitions.map((definition, index) => ({
+      id: -(index + 1),
+      name: definition.label,
+      definition,
+    }));
+
+  return visibleCategories.map((category) => {
+    const matchedDefinition = 'definition' in category
+      ? category.definition
+      : categoryDefinitions.find((definition) => definition.keys.some((key) => category.name.toLowerCase().includes(key)));
 
     return {
-      id: category?.id,
-      name: category?.name ?? definition.label,
-      image: definition.image,
-      icon: definition.icon,
+      id: category.id > 0 ? category.id : undefined,
+      name: category.name,
+      description: 'description' in category ? category.description : '',
+      image: ('image_url' in category && typeof category.image_url === 'string' && category.image_url)
+        || matchedDefinition?.image
+        || '',
+      icon: matchedDefinition?.icon ?? ShoppingBag,
+      href: category.id > 0 ? `/shop?category=${category.id}` : '/shop',
+      external: false,
     };
-  }),
-);
+  });
+});
 
-const featuredProducts = computed(() => products.value.slice(0, 5));
-
-function categoryLink(categoryId?: number) {
-  return categoryId
-    ? { path: '/shop', query: { category: String(categoryId) } }
-    : { path: '/shop' };
-}
+const featuredProducts = computed(() => [...products.value]
+  .sort((a, b) => {
+    const timeA = Date.parse(a.created_at ?? '');
+    const timeB = Date.parse(b.created_at ?? '');
+    if (Number.isFinite(timeA) && Number.isFinite(timeB) && timeA !== timeB) return timeB - timeA;
+    return b.id - a.id;
+  })
+  .slice(0, 5));
 
 function addProduct(product: Product) {
   if (product.stock <= 0) return;
@@ -136,6 +157,16 @@ function discountPercentage(product: Product) {
   return Math.round((1 - price / originalPrice) * 100);
 }
 
+function getProductRating(product: Product) {
+  const rating = Number(product.rating);
+  return Number.isFinite(rating) && rating > 0 ? rating : null;
+}
+
+function getProductReviewCount(product: Product) {
+  const reviewCount = Number(product.review_count);
+  return Number.isFinite(reviewCount) && reviewCount > 0 ? reviewCount : null;
+}
+
 function getProductCategory(product: Product) {
   return product.category?.name
     ?? categories.value.find((category) => category.id === product.category_id)?.name;
@@ -166,19 +197,33 @@ async function fetchCategories() {
   }
 }
 
+async function fetchCategorySection() {
+  if (props.preview) {
+    categorySection.value = props.previewCategorySection ?? null;
+    return;
+  }
+
+  try {
+    const storefront = await storefrontAPI.getPublished();
+    categorySection.value = storefront.sections.find((section) => section.section_key === 'categories') ?? null;
+  } catch (error) {
+    console.error('Failed to load published category display settings:', error);
+  }
+}
+
 onMounted(() => {
   void fetchProducts();
   void fetchCategories();
+  void fetchCategorySection();
 });
 </script>
 
 <template>
   <main class="catalog-shell">
-    <section id="categories" class="catalog-section">
+    <section v-if="categorySection?.is_visible !== false" id="categories" class="catalog-section">
       <header class="section-heading">
         <div>
-          <p class="eyebrow">Find what you need</p>
-          <h2><span class="desktop-section-title">Shop by category</span><span class="mobile-section-title">Categories</span></h2>
+          <h2><span class="desktop-section-title">{{ categoryHeading.title }}</span><span class="mobile-section-title">{{ categoryHeading.title }}</span></h2>
         </div>
         <router-link to="/shop" class="section-link">
           Browse all <ArrowRight :size="16" />
@@ -186,14 +231,18 @@ onMounted(() => {
       </header>
 
       <div class="category-grid">
-        <router-link
+        <component
+          :is="category.external ? 'a' : 'router-link'"
           v-for="category in categoryCards"
-          :key="category.name"
-          :to="categoryLink(category.id)"
+          :key="category.id ?? category.name"
+          :to="category.external ? undefined : category.href"
+          :href="category.external ? category.href : undefined"
+          :target="category.external ? '_blank' : undefined"
+          :rel="category.external ? 'noopener noreferrer' : undefined"
           class="category-card"
         >
           <img
-            v-if="!unavailableCategoryImages.has(category.name)"
+            v-if="category.image && !unavailableCategoryImages.has(category.name)"
             class="category-image"
             :src="category.image"
             :alt="category.name"
@@ -204,17 +253,18 @@ onMounted(() => {
           <span class="category-content">
             <component :is="category.icon" :size="19" aria-hidden="true" />
             <span>{{ category.name }}</span>
+            <small v-if="categorySection?.config.show_descriptions === true && category.description">{{ category.description }}</small>
             <ArrowRight :size="16" aria-hidden="true" />
           </span>
-        </router-link>
+        </component>
       </div>
     </section>
 
-    <section id="featured" class="catalog-section product-section">
+    <section v-if="props.showProducts !== false" id="featured" class="catalog-section product-section">
       <header class="section-heading">
         <div>
-          <p class="eyebrow">Selected from our live catalogue</p>
-          <h2><span class="desktop-section-title">Featured products</span><span class="mobile-section-title">Top picks</span></h2>
+          <p class="eyebrow">Recently added to our live catalogue</p>
+          <h2><span class="desktop-section-title">New arrivals</span><span class="mobile-section-title">New arrivals</span></h2>
         </div>
         <router-link to="/shop" class="section-link">
           View all products <ArrowRight :size="16" />
@@ -284,10 +334,12 @@ onMounted(() => {
                     KSh {{ Number(product.original_price).toLocaleString() }}
                   </del>
                 </div>
-                <div v-if="typeof product.rating === 'number' && typeof product.review_count === 'number' && product.review_count > 0" class="product-rating">
+                <div v-if="getProductRating(product) !== null" class="product-rating">
                   <Star :size="12" fill="currentColor" aria-hidden="true" />
-                  <span>{{ Number(product.rating).toFixed(1) }}</span>
-                  <span class="product-review-count">({{ Number(product.review_count).toLocaleString() }})</span>
+                  <span>{{ getProductRating(product)?.toFixed(1) }}</span>
+                  <span v-if="getProductReviewCount(product) !== null" class="product-review-count">
+                    ({{ getProductReviewCount(product)?.toLocaleString() }})
+                  </span>
                 </div>
                 <div class="product-action-row product-card-actions">
                   <button
@@ -315,40 +367,9 @@ onMounted(() => {
           </div>
         </div>
 
-        <aside class="catalog-promo">
-          <p class="promo-kicker">Kisaku Supply Agencies</p>
-          <h3>Everyday essentials, all in one place.</h3>
-          <p>Browse the full catalogue and find the right products for your home and day.</p>
-          <router-link to="/shop" class="promo-link">
-            Explore products <ArrowRight :size="16" />
-          </router-link>
-          <ShoppingBag class="promo-art" :size="92" stroke-width="1" aria-hidden="true" />
-        </aside>
       </div>
     </section>
 
-    <section class="service-strip" aria-label="Shopping information">
-      <div class="service-item">
-        <span class="service-icon"><Truck :size="20" /></span>
-        <span><strong>Nationwide delivery</strong><small>Across Kenya</small></span>
-      </div>
-      <div class="service-item">
-        <span class="service-icon"><BadgeCheck :size="20" /></span>
-        <span><strong>Quality assured</strong><small>Trusted products</small></span>
-      </div>
-      <div class="service-item">
-        <span class="service-icon"><CreditCard :size="20" /></span>
-        <span><strong>Secure payments</strong><small>M-Pesa and cards</small></span>
-      </div>
-      <div class="service-item">
-        <span class="service-icon"><PackageCheck :size="20" /></span>
-        <span><strong>Easy order support</strong><small>Track your orders</small></span>
-      </div>
-      <div class="service-item">
-        <span class="service-icon"><Headphones :size="20" /></span>
-        <span><strong>Customer support</strong><small>We're here to help</small></span>
-      </div>
-    </section>
   </main>
 </template>
 
@@ -404,8 +425,7 @@ onMounted(() => {
   text-decoration: none;
 }
 
-.section-link:hover,
-.promo-link:hover {
+.section-link:hover {
   color: #f58216;
 }
 
@@ -471,9 +491,7 @@ onMounted(() => {
 }
 
 .featured-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px;
-  gap: 14px;
+  display: block;
 }
 
 .featured-content {
@@ -662,66 +680,6 @@ onMounted(() => {
   margin-top: 5px;
 }
 
-.catalog-promo {
-  position: relative;
-  display: flex;
-  min-height: 100%;
-  flex-direction: column;
-  align-items: flex-start;
-  overflow: hidden;
-  padding: 22px 18px;
-  border-radius: 6px;
-  background: #102c49;
-  color: #fff;
-}
-
-.promo-kicker {
-  margin: 0 0 14px;
-  color: #ffbd76;
-  font-size: 0.69rem;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.catalog-promo h3 {
-  position: relative;
-  z-index: 1;
-  margin: 0;
-  font-size: 1.35rem;
-  font-weight: 750;
-  line-height: 1.25;
-}
-
-.catalog-promo > p:not(.promo-kicker) {
-  position: relative;
-  z-index: 1;
-  margin: 12px 0 20px;
-  color: #d3deea;
-  font-size: 0.82rem;
-  line-height: 1.55;
-}
-
-.promo-link {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: auto;
-  color: #fff;
-  font-size: 0.82rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.promo-art {
-  position: absolute;
-  right: -17px;
-  bottom: 36px;
-  color: rgb(255 255 255 / 9%);
-}
-
 .catalog-message {
   display: flex;
   min-height: 220px;
@@ -816,66 +774,15 @@ onMounted(() => {
   border-radius: 4px;
 }
 
-.service-strip {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 36px;
-  padding: 20px 0;
-  border-top: 1px solid #e3e8ee;
-  border-bottom: 1px solid #e3e8ee;
-}
-
-.service-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.service-icon {
-  display: inline-flex;
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #eff5fa;
-  color: #075397;
-}
-
-.service-item > span:last-child {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.service-item strong {
-  color: #102c49;
-  font-size: 0.78rem;
-}
-
-.service-item small {
-  color: #64748b;
-  font-size: 0.71rem;
-}
-
 @keyframes shimmer {
   to { background-position: -200% 0; }
 }
 
 @media (max-width: 1100px) {
-  .featured-layout {
-    grid-template-columns: minmax(0, 1fr) 190px;
-  }
-
   .product-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .service-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 760px) {
@@ -946,13 +853,6 @@ onMounted(() => {
     -webkit-line-clamp: 2;
   }
 
-  .featured-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .catalog-promo {
-    min-height: 150px;
-  }
 }
 
 @media (max-width: 560px) {
@@ -1018,13 +918,20 @@ onMounted(() => {
     font-size: 0.78rem;
   }
 
-  .product-category,
+  .product-category {
+    max-width: 100%;
+    font-size: 0.6rem;
+  }
+
   .product-rating {
-    display: none;
+    display: flex;
+    gap: 2px;
+    margin: 3px 0 6px;
+    font-size: 0.61rem;
   }
 
   .product-card-actions .product-action {
-    min-height: 34px;
+    min-height: 38px;
     gap: 4px;
     padding: 6px 4px;
     font-size: 0.62rem;
@@ -1035,23 +942,6 @@ onMounted(() => {
     font-size: 0.73rem;
   }
 
-  .service-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 15px 10px;
-    margin-top: 28px;
-  }
-
-  .service-item {
-    gap: 8px;
-  }
-
-  .service-item strong {
-    font-size: 0.73rem;
-  }
-
-  .service-item small {
-    font-size: 0.66rem;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

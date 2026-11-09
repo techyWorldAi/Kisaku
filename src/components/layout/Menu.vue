@@ -15,13 +15,15 @@ import {
   UserRound,
   X,
 } from 'lucide-vue-next';
-import { orderAPI, productAPI } from '../../services/api';
-import type { Category, Order, Product } from '../../services/api';
+import { orderAPI, productAPI, storefrontAPI } from '../../services/api';
+import type { Category, Order, Product, StoreSettings } from '../../services/api';
 import { useAuthStore } from '../../store/auth';
 import { useCartStore } from '../../store/cart';
 import { useOrdersStore } from '../../store/orders';
 import { useWishlistStore } from '../../store/wishlist';
 import { formatOrderNumber } from '../../utils/orderNumber';
+
+const props = defineProps<{ storeSettings?: StoreSettings }>();
 
 const menuItems = [
   { label: 'Home', to: '/' },
@@ -51,6 +53,9 @@ const searchLoading = ref(false);
 const searchFailed = ref(false);
 const searchProducts = ref<Product[]>([]);
 const categories = ref<Category[]>([]);
+const storeLogo = ref('/Kisaku_Supply_Agencies_Logo-removebg-preview.png');
+const storeName = ref('Kisaku Supply Agencies');
+const storeAnnouncement = ref('');
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 let ordersRequestId = 0;
 let categoriesLoaded = false;
@@ -249,7 +254,38 @@ async function toggleCategories() {
   }
 }
 
-onMounted(() => document.addEventListener('click', handleOutsideClick));
+function applyStoreSettings(settings: StoreSettings) {
+  storeName.value = settings.store_name || 'Kisaku Supply Agencies';
+  storeAnnouncement.value = settings.announcement ?? '';
+  const image = settings.logo_url?.trim() ?? '';
+  if (/^https?:\/\/\S+$/i.test(image) || image.startsWith('/') && !image.startsWith('//')) {
+    storeLogo.value = image;
+  } else {
+    storeLogo.value = '/Kisaku_Supply_Agencies_Logo-removebg-preview.png';
+  }
+}
+
+watch(() => props.storeSettings, (settings) => {
+  if (settings) applyStoreSettings(settings);
+}, { immediate: true });
+
+async function loadStoreBranding() {
+  if (props.storeSettings) {
+    applyStoreSettings(props.storeSettings);
+    return;
+  }
+  try {
+    const storefront = await storefrontAPI.getPublished();
+    applyStoreSettings(storefront.settings);
+  } catch (error) {
+    console.error('Failed to load published store branding:', error);
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleOutsideClick);
+  void loadStoreBranding();
+});
 onUnmounted(() => {
   document.removeEventListener('click', handleOutsideClick);
   if (searchTimer) clearTimeout(searchTimer);
@@ -257,6 +293,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <p v-if="storeAnnouncement" class="store-announcement" role="status">{{ storeAnnouncement }}</p>
   <header class="header-main">
       <div class="header-row">
         <button
@@ -269,11 +306,11 @@ onUnmounted(() => {
           <X v-if="mobileMenuOpen" :size="22" />
           <MenuIcon v-else :size="22" />
         </button>
-        <router-link to="/" class="brand" aria-label="Kisaku Supply Agencies home" @click="closeOverlays">
+        <router-link to="/" class="brand" :aria-label="`${storeName} home`" @click="closeOverlays">
           <img
             class="brand-logo"
-            src="/Kisaku_Supply_Agencies_Logo-removebg-preview.png"
-            alt="Kisaku Supply Agencies"
+            :src="storeLogo"
+            :alt="storeName"
           />
         </router-link>
 
@@ -496,6 +533,16 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.store-announcement {
+  margin: 0;
+  padding: 8px 16px;
+  background: #075397;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-align: center;
+}
+
 .site-header {
   position: relative;
   z-index: 10;

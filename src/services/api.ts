@@ -117,8 +117,13 @@ export interface Category {
   id: number;
   name: string;
   description: string;
+  image_url?: string | null;
+  listing_banner_image_url?: string | null;
   created_at?: string;
 }
+
+export type CategoryInput = Pick<Category, 'name' | 'description'>
+  & Partial<Pick<Category, 'image_url' | 'listing_banner_image_url'>>;
 
 export interface StoreSettings {
   store_name: string;
@@ -126,7 +131,13 @@ export interface StoreSettings {
   description?: string;
   contact_email?: string;
   contact_phone?: string;
-  contact_address?: string;
+  whatsapp?: string;
+  address?: string;
+  opening_hours?: string;
+  announcement?: string;
+  footer_text?: string;
+  logo_url?: string;
+  favicon_url?: string;
   social: Record<string, string>;
 }
 
@@ -635,6 +646,26 @@ function parseStorefrontSnapshot(value: unknown, label: string): PublishedStoref
   return snapshot as unknown as PublishedStorefront;
 }
 
+export const uploadAPI = {
+  uploadImage: async (file: File, kind: 'product' | 'banner' | 'category' | 'logo' | 'general'): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('kind', kind);
+    const response = await api.post('/admin/uploads', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
+    });
+    const payload = unwrapResponseData(response.data);
+    if (typeof payload === 'string') return payload;
+    if (typeof payload === 'object' && payload !== null) {
+      const upload = payload as Record<string, unknown>;
+      if (typeof upload.url === 'string') return upload.url;
+      if (typeof upload.image_url === 'string') return upload.image_url;
+    }
+    throw new Error('The image upload endpoint did not return an image URL.');
+  },
+};
+
 export const storefrontAPI = {
   getPublished: async (): Promise<PublishedStorefront> => {
     const response = await api.get('/storefront');
@@ -656,7 +687,21 @@ export const storefrontAPI = {
   },
 
   saveSettings: async (settings: StoreSettings): Promise<void> => {
-    await api.put('/admin/storefront/settings', settings);
+    await api.put('/admin/storefront/settings', {
+      store_name: settings.store_name,
+      tagline: settings.tagline,
+      description: settings.description,
+      contact_email: settings.contact_email,
+      contact_phone: settings.contact_phone,
+      whatsapp: settings.whatsapp,
+      address: settings.address,
+      opening_hours: settings.opening_hours,
+      announcement: settings.announcement,
+      footer_text: settings.footer_text,
+      logo_url: settings.logo_url,
+      favicon_url: settings.favicon_url,
+      social: settings.social,
+    });
   },
 
   publish: async (): Promise<void> => {
@@ -709,22 +754,6 @@ export const storefrontAPI = {
     await api.put('/admin/storefront/sections/reorder', { ids });
   },
 
-  uploadImage: async (file: File, kind: string): Promise<string> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('kind', kind);
-    const response = await api.post('/admin/uploads', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    const payload = unwrapResponseData(response.data);
-    if (typeof payload === 'string') return payload;
-    if (typeof payload === 'object' && payload !== null) {
-      const upload = payload as Record<string, unknown>;
-      if (typeof upload.url === 'string') return upload.url;
-      if (typeof upload.image_url === 'string') return upload.image_url;
-    }
-    throw new Error('The image upload endpoint did not return an image URL.');
-  },
 };
 
 export const adminCategoriesAPI = {
@@ -733,12 +762,12 @@ export const adminCategoriesAPI = {
     return parseResponseList<Category>(response.data, 'categories', 'admin categories');
   },
 
-  create: async (category: Pick<Category, 'name' | 'description'>): Promise<Category> => {
+  create: async (category: CategoryInput): Promise<Category> => {
     const response = await api.post('/admin/categories', category);
     return unwrapResponseData(response.data) as Category;
   },
 
-  update: async (id: number, category: Partial<Pick<Category, 'name' | 'description'>>): Promise<Category> => {
+  update: async (id: number, category: Partial<CategoryInput>): Promise<Category> => {
     const response = await api.put(`/admin/categories/${id}`, category);
     return unwrapResponseData(response.data) as Category;
   },

@@ -1,8 +1,30 @@
 <template>
   <div class="shop-page min-h-screen bg-gray-50">
-    <Header />
+    <Header :store-settings="storeSettings" />
 
-    <router-link to="/shop" class="shop-hero" aria-label="Shop everyday essentials">
+    <section v-if="hasCategoryHero" class="shop-category-hero" :aria-label="`${getCategoryBannerName(selectedCategory)} category banner`">
+      <img
+        v-if="categoryBannerImage"
+        class="shop-category-hero-image"
+        :src="categoryBannerImage"
+        :alt="`${getCategoryBannerName(selectedCategory)} promotion`"
+      />
+      <div class="shop-category-hero-copy">
+        <h1>{{ categoryBanner?.title || getCategoryBannerName(selectedCategory) }}</h1>
+        <p v-if="categoryBanner?.config.text || categoryListingBanner?.description">
+          {{ categoryBanner?.config.text || categoryListingBanner?.description }}
+        </p>
+        <a
+          :href="categoryBannerLink"
+          :target="isExternalCategoryBannerLink ? '_blank' : undefined"
+          :rel="isExternalCategoryBannerLink ? 'noopener noreferrer' : undefined"
+          class="shop-hero-button"
+        >
+          {{ categoryBanner?.config.button_label || 'Shop this category' }} <ArrowRight :size="16" />
+        </a>
+      </div>
+    </section>
+    <router-link v-else to="/shop" class="shop-hero" aria-label="Shop everyday essentials">
       <span class="shop-hero-copy">
         <strong>Shop Smart. <em>Live Better.</em></strong>
         <span>Great deals on your favourite products</span>
@@ -19,9 +41,9 @@
             <ChevronRight :size="13" aria-hidden="true" />
             <router-link to="/shop">Shop</router-link>
             <ChevronRight :size="13" aria-hidden="true" />
-            <span>All products</span>
+            <span>{{ selectedCategory ? getCategoryName(selectedCategory) : 'All products' }}</span>
           </nav>
-          <h1>Shop All Products</h1>
+          <h1>{{ selectedCategory ? getCategoryName(selectedCategory) : 'Shop All Products' }}</h1>
         </div>
         <div class="shop-toolbar">
           <label for="shop-sort">Sort by:</label>
@@ -33,27 +55,6 @@
             <option value="price-low">Price: low to high</option>
             <option value="price-high">Price: high to low</option>
           </select>
-          <span class="view-label">View:</span>
-          <button
-            type="button"
-            class="view-toggle"
-            :class="{ active: viewMode === 'grid' }"
-            :aria-pressed="viewMode === 'grid'"
-            aria-label="Grid view"
-            @click="viewMode = 'grid'"
-          >
-            <Grid2X2 :size="15" />
-          </button>
-          <button
-            type="button"
-            class="view-toggle"
-            :class="{ active: viewMode === 'list' }"
-            :aria-pressed="viewMode === 'list'"
-            aria-label="List view"
-            @click="viewMode = 'list'"
-          >
-            <List :size="16" />
-          </button>
         </div>
       </div>
 
@@ -141,19 +142,9 @@
         Showing <strong>{{ filteredProducts.length }}</strong>
         {{ filteredProducts.length === 1 ? 'product' : 'products' }}
       </p>
-      <div v-if="!loading && filteredProducts.length > 0" class="shop-product-grid" :class="`view-${viewMode}`">
+      <div v-if="!loading && filteredProducts.length > 0" class="shop-product-grid">
         <article v-for="product in filteredProducts" :key="product.id" class="shop-product-card">
           <router-link :to="`/product/${product.id}`" class="shop-product-media">
-            <button
-              type="button"
-              class="shop-wishlist-toggle"
-              :class="{ saved: wishlistStore.isSaved(product.id) }"
-              :aria-label="wishlistStore.isSaved(product.id) ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`"
-              :aria-pressed="wishlistStore.isSaved(product.id)"
-              @click.prevent="toggleWishlist(product)"
-            >
-              <Heart :size="15" :fill="wishlistStore.isSaved(product.id) ? 'currentColor' : 'none'" />
-            </button>
             <span v-if="product.stock === 0" class="shop-stock-badge">Out of stock</span>
             <span v-else-if="discountPercentage(product) > 0" class="shop-sale-badge">
               -{{ discountPercentage(product) }}%
@@ -186,23 +177,22 @@
               <router-link :to="`/product/${product.id}`" class="shop-product-title">
                 {{ product.name }}
               </router-link>
-              <span v-if="discountPercentage(product) > 0" class="shop-product-discount">
-                -{{ discountPercentage(product) }}%
-              </span>
             </div>
             <span v-if="getProductCategory(product)" class="shop-product-category">
               {{ getProductCategory(product) }}
             </span>
             <div class="shop-product-meta">
-              <span class="shop-product-price">KES {{ Number(product.price).toLocaleString() }}</span>
+              <span class="shop-product-price">KSh {{ Number(product.price).toLocaleString() }}</span>
               <del v-if="discountPercentage(product) > 0" class="shop-original-price">
-                KES {{ Number(product.original_price).toLocaleString() }}
+                KSh {{ Number(product.original_price).toLocaleString() }}
               </del>
             </div>
-            <div v-if="typeof product.rating === 'number' && typeof product.review_count === 'number' && product.review_count > 0" class="shop-product-rating">
+            <div v-if="getProductRating(product) !== null" class="shop-product-rating">
               <Star :size="12" fill="currentColor" aria-hidden="true" />
-              <span>{{ Number(product.rating).toFixed(1) }}</span>
-              <span class="shop-review-count">({{ Number(product.review_count).toLocaleString() }})</span>
+              <span>{{ getProductRating(product)?.toFixed(1) }}</span>
+              <span v-if="getProductReviewCount(product) !== null" class="shop-review-count">
+                ({{ getProductReviewCount(product)?.toLocaleString() }})
+              </span>
             </div>
             <div class="product-action-row product-card-actions">
               <button
@@ -261,14 +251,9 @@
         </aside>
       </div>
 
-      <section class="shop-service-strip" aria-label="Shopping benefits">
-        <div><Truck :size="22" /><span><strong>Nationwide delivery</strong><small>Across Kenya</small></span></div>
-        <div><ShieldCheck :size="22" /><span><strong>Quality assured</strong><small>Trusted products</small></span></div>
-        <div><CreditCard :size="22" /><span><strong>Secure payments</strong><small>M-Pesa, cards &amp; more</small></span></div>
-        <div><RefreshCw :size="22" /><span><strong>Easy returns</strong><small>Hassle-free</small></span></div>
-        <div><Headphones :size="22" /><span><strong>Customer support</strong><small>Here to help</small></span></div>
-      </section>
     </main>
+    <StorefrontTrustStrip />
+    <StorefrontFooter :settings="storeSettings" />
   </div>
 </template>
 
@@ -277,31 +262,28 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   ArrowRight,
-  CreditCard,
   ChevronRight,
-  Grid2X2,
   Heart,
-  Headphones,
   House,
-  List,
-  RefreshCw,
-  ShieldCheck,
   ShoppingBag,
   ShoppingCart,
   SlidersHorizontal,
   Star,
-  Truck,
   X,
 } from 'lucide-vue-next';
 import { useAuthStore } from '../store/auth';
 import { useCartStore } from '../store/cart';
 import { useWishlistStore } from '../store/wishlist';
-import { productAPI } from '../services/api';
-import type { Product, Category } from '../services/api';
+import { productAPI, storefrontAPI } from '../services/api';
+import type { Product, Category, StoreSettings, StorefrontSection } from '../services/api';
 import Header from '../components/layout/Menu.vue';
+import StorefrontFooter from '../components/storefront/StorefrontFooter.vue';
+import StorefrontTrustStrip from '../components/storefront/StorefrontTrustStrip.vue';
 
 const products = ref<Product[]>([]);
 const categories = ref<Category[]>([]);
+const storeSettings = ref<StoreSettings>({ store_name: 'Kisaku Supply Agencies', social: {} });
+const storefrontSections = ref<StorefrontSection[]>([]);
 const loading = ref(true);
 const loadError = ref(false);
 const authStore = useAuthStore();
@@ -313,10 +295,40 @@ const searchQuery = ref(String(route.query.search ?? ''));
 const selectedCategory = ref<number | string>(String(route.query.category ?? ''));
 const sortBy = ref(String(route.query.sort ?? 'popular'));
 const selectedPriceRange = ref(String(route.query.price ?? ''));
-const viewMode = ref<'grid' | 'list'>('grid');
 const unavailableImages = ref(new Set<number>());
 const addedProductId = ref<number | null>(null);
 let feedbackTimeout: ReturnType<typeof setTimeout> | undefined;
+
+const categoryBanner = computed(() => {
+  const categoryId = Number(selectedCategory.value);
+  if (!Number.isInteger(categoryId) || categoryId <= 0) return null;
+  return storefrontSections.value.find((section) => (
+    section.section_key === `category-${categoryId}`
+    && section.type === 'promo'
+    && section.is_visible
+  )) ?? null;
+});
+const categoryListingBanner = computed(() => {
+  const categoryId = Number(selectedCategory.value);
+  if (!Number.isInteger(categoryId) || categoryId <= 0) return null;
+  return categories.value.find((category) => category.id === categoryId && category.listing_banner_image_url) ?? null;
+});
+const hasCategoryHero = computed(() => Boolean(categoryBanner.value || categoryListingBanner.value));
+const categoryBannerImage = computed(() => {
+  const image = categoryBanner.value?.config.image_url || categoryListingBanner.value?.listing_banner_image_url;
+  return typeof image === 'string'
+    && (/^https?:\/\/\S+$/i.test(image) || image.startsWith('/') && !image.startsWith('//'))
+    ? image
+    : '';
+});
+const categoryBannerLink = computed(() => {
+  const link = categoryBanner.value?.config.link_url;
+  return typeof link === 'string'
+    && (/^https?:\/\/\S+$/i.test(link) || link.startsWith('/') && !link.startsWith('//'))
+    ? link
+    : `/shop?category=${selectedCategory.value}`;
+});
+const isExternalCategoryBannerLink = computed(() => /^https?:\/\//i.test(categoryBannerLink.value));
 
 const priceRanges = [
   { label: 'Under 1,000', min: 0, max: 999 },
@@ -378,7 +390,12 @@ const filteredProducts = computed(() => {
       break;
     case 'newest':
     default:
-      filtered.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
+      filtered.sort((a, b) => {
+        const timeA = Date.parse(a.created_at ?? '');
+        const timeB = Date.parse(b.created_at ?? '');
+        if (Number.isFinite(timeA) && Number.isFinite(timeB) && timeA !== timeB) return timeB - timeA;
+        return b.id - a.id;
+      });
       break;
   }
   
@@ -428,6 +445,16 @@ function discountPercentage(product: Product) {
   return Math.round((1 - price / originalPrice) * 100);
 }
 
+function getProductRating(product: Product) {
+  const rating = Number(product.rating);
+  return Number.isFinite(rating) && rating > 0 ? rating : null;
+}
+
+function getProductReviewCount(product: Product) {
+  const reviewCount = Number(product.review_count);
+  return Number.isFinite(reviewCount) && reviewCount > 0 ? reviewCount : null;
+}
+
 function getProductCategory(product: Product) {
   return product.category?.name
     ?? categories.value.find((category) => category.id === product.category_id)?.name;
@@ -450,6 +477,11 @@ function markImageUnavailable(productId: number) {
 function getCategoryName(categoryId: number | string) {
   const category = categories.value.find(c => c.id === Number(categoryId));
   return category ? category.name : 'Unknown';
+}
+
+function getCategoryBannerName(categoryId: number | string) {
+  const category = categories.value.find((item) => item.id === Number(categoryId));
+  return category?.name || 'Category';
 }
 
 function getCategoryCount(categoryId: number) {
@@ -503,9 +535,20 @@ async function fetchCategories() {
   }
 }
 
+async function fetchStorefrontContent() {
+  try {
+    const storefront = await storefrontAPI.getPublished();
+    storefrontSections.value = storefront.sections;
+    storeSettings.value = storefront.settings;
+  } catch (error) {
+    console.error('Failed to load storefront content for product listings:', error);
+  }
+}
+
 onMounted(() => {
   void fetchProducts();
   void fetchCategories();
+  void fetchStorefrontContent();
 });
 
 onUnmounted(() => {
@@ -976,6 +1019,63 @@ watch(
   }
 }
 
+.shop-category-hero {
+  position: relative;
+  display: flex;
+  width: min(1280px, calc(100% - 32px));
+  min-height: clamp(180px, 24vw, 320px);
+  align-items: center;
+  overflow: hidden;
+  margin: 10px auto 0;
+  border: 1px solid #dfeafa;
+  border-radius: 9px;
+  background: linear-gradient(105deg, #eaf3ff 0%, #f8fbff 52%, #d7e9fc 100%);
+  color: #102c49;
+}
+
+.shop-category-hero::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #102c49 0%, rgb(16 44 73 / 78%) 45%, rgb(16 44 73 / 8%) 100%);
+  content: "";
+}
+
+.shop-category-hero-image {
+  position: absolute;
+  inset: 0 0 0 30%;
+  width: 70%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.shop-category-hero-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: min(620px, 78%);
+  gap: 9px;
+  padding: clamp(22px, 5vw, 56px);
+  color: #fff;
+}
+
+.shop-category-hero-copy h1 {
+  margin: 0;
+  font-size: clamp(1.4rem, 3.8vw, 2.8rem);
+  line-height: 1.1;
+}
+
+.shop-category-hero-copy p {
+  max-width: 52ch;
+  margin: 0;
+  font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+  line-height: 1.55;
+}
+
+.shop-category-hero-copy .shop-hero-button {
+  margin-top: 5px;
+}
+
 .shop-hero {
   position: relative;
   display: flex;
@@ -1116,27 +1216,6 @@ watch(
   color: #17355b;
   font: inherit;
   font-size: 0.67rem;
-}
-
-.view-label {
-  margin-left: 9px;
-}
-
-.view-toggle {
-  display: grid;
-  width: 27px;
-  height: 27px;
-  place-items: center;
-  border: 1px solid #cbd8e8;
-  border-radius: 4px;
-  background: #fff;
-  color: #075397;
-  cursor: pointer;
-}
-
-.view-toggle.active {
-  border-color: #075397;
-  background: #eaf3ff;
 }
 
 .catalog-layout {
@@ -1296,17 +1375,17 @@ watch(
 }
 
 .shop-product-media {
-  aspect-ratio: 1.18 / 1;
+  aspect-ratio: 1.4 / 1;
   background: #fff;
 }
 
 .shop-product-media img {
-  object-fit: contain;
-  padding: 5px;
+  object-fit: cover;
+  padding: 0;
 }
 
 .shop-product-info {
-  padding: 6px 7px 7px;
+  padding: 10px 12px 12px;
 }
 
 .shop-product-title-row {
@@ -1319,52 +1398,58 @@ watch(
 .shop-product-title {
   min-width: 0;
   flex: 1;
-  color: #1c344f;
-  font-size: 0.64rem;
+  color: #172b3e;
+  font-size: 0.88rem;
   font-weight: 700;
 }
 
-.shop-product-discount {
-  flex: 0 0 auto;
-  color: #dc2626;
-  font-size: 0.56rem;
-  font-weight: 800;
-}
-
 .shop-product-category {
-  display: none;
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  margin-top: 7px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f1f3f5;
+  color: #465568;
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shop-product-meta {
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 3px;
+  gap: 7px;
+  margin-top: 9px;
 }
 
 .shop-product-price {
-  color: #dc2626;
-  font-size: 0.7rem;
+  color: #101820;
+  font-size: 0.96rem;
+  font-weight: 750;
 }
 
 .shop-original-price {
-  font-size: 0.56rem;
+  color: #64748b;
+  font-size: 0.72rem;
 }
 
 .shop-product-rating {
-  margin: 2px 0 3px;
-  font-size: 0.59rem;
+  margin: 7px 0 9px;
+  font-size: 0.78rem;
 }
 
 .product-card-actions {
-  margin-top: 3px;
+  margin-top: auto;
 }
 
 .product-card-actions :deep(.product-action) {
-  min-height: 24px;
-  gap: 4px;
-  padding: 4px 5px;
-  border-radius: 4px;
-  font-size: 0.62rem;
+  min-height: 52px;
+  gap: 7px;
+  padding: 10px 8px;
+  border-radius: 9px;
+  font-size: 0.94rem;
 }
 
 .shop-value-banner {
@@ -1438,73 +1523,6 @@ watch(
   background: #df700d;
 }
 
-.view-list {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.view-list .shop-product-card {
-  min-height: 112px;
-  flex-direction: row;
-  align-items: stretch;
-}
-
-.view-list .shop-product-media {
-  width: 112px;
-  flex: 0 0 112px;
-}
-
-.view-list .shop-product-info {
-  justify-content: center;
-  padding: 10px;
-}
-
-.view-list .shop-product-category {
-  display: inline-block;
-}
-
-.view-list .shop-product-title {
-  font-size: 0.8rem;
-}
-
-.shop-service-strip {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 10px;
-  padding: 9px 8px;
-  border-radius: 7px;
-  background: #e8f1ff;
-}
-
-.shop-service-strip > div {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: #075397;
-}
-
-.shop-service-strip > div + div {
-  border-left: 1px solid #abc7eb;
-}
-
-.shop-service-strip span {
-  display: grid;
-  min-width: 0;
-  gap: 1px;
-}
-
-.shop-service-strip strong {
-  color: #123b69;
-  font-size: 0.63rem;
-}
-
-.shop-service-strip small {
-  color: #415c7b;
-  font-size: 0.58rem;
-}
-
 @media (max-width: 1100px) {
   .catalog-layout {
     grid-template-columns: 172px minmax(0, 1fr);
@@ -1519,6 +1537,12 @@ watch(
   }
 }
 
+@media (max-width: 900px) {
+  .shop-product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 820px) {
   .catalog-layout {
     grid-template-columns: 155px minmax(0, 1fr);
@@ -1528,16 +1552,33 @@ watch(
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .shop-service-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .shop-service-strip > div:nth-child(4) {
-    border-left: 0;
-  }
 }
 
 @media (max-width: 620px) {
+  .shop-category-hero {
+    width: calc(100% - 24px);
+    min-height: 180px;
+  }
+
+  .shop-category-hero-image {
+    left: 18%;
+    width: 82%;
+  }
+
+  .shop-category-hero::after {
+    background: linear-gradient(90deg, #102c49 0%, rgb(16 44 73 / 76%) 52%, rgb(16 44 73 / 12%) 100%);
+  }
+
+  .shop-category-hero-copy {
+    width: 88%;
+    gap: 7px;
+    padding: 18px;
+  }
+
+  .shop-category-hero-copy h1 {
+    font-size: 1.35rem;
+  }
+
   .shop-hero {
     width: calc(100% - 24px);
     height: 118px;
@@ -1596,15 +1637,6 @@ watch(
     font-size: 0.61rem;
   }
 
-  .view-label {
-    display: none;
-  }
-
-  .view-toggle {
-    width: 24px;
-    height: 25px;
-  }
-
   .catalog-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -1640,17 +1672,21 @@ watch(
     gap: 7px;
   }
 
-  .shop-service-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .shop-product-info {
+    padding: 9px;
   }
 
-  .shop-service-strip > div {
-    justify-content: flex-start;
-    padding: 5px;
+  .shop-product-title {
+    font-size: 0.82rem;
   }
 
-  .shop-service-strip > div + div {
-    border-left: 0;
+  .shop-product-price {
+    font-size: 0.9rem;
+  }
+
+  .product-card-actions :deep(.product-action) {
+    min-height: 46px;
+    font-size: 0.84rem;
   }
 }
 

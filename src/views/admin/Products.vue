@@ -323,43 +323,49 @@
                   <label class="block text-sm font-medium text-gray-700 mb-2">Product Image</label>
                   
                   <!-- Image Preview -->
-                  <div v-if="imagePreview" class="mb-4">
-                    <img :src="imagePreview" alt="Image preview" class="w-32 h-32 object-cover rounded-lg border border-gray-300">
+                  <div v-if="imagePreview" class="mb-4 flex items-center gap-4">
+                    <img :src="imagePreview" alt="Product image preview" class="h-28 w-28 rounded-lg border border-gray-300 bg-white object-contain p-1">
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-gray-800">Image ready</p>
+                      <p class="mt-1 break-all text-xs text-gray-500">{{ productForm.image }}</p>
+                    </div>
                   </div>
 
                   <!-- File Upload -->
                   <div class="flex items-center justify-center w-full">
-                    <label for="image-upload" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors duration-200">
+                    <label for="image-upload" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors duration-200" :class="{ 'pointer-events-none opacity-60': imageUploading }">
                       <div class="flex flex-col items-center justify-center pt-5 pb-6">
                         <svg class="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
                           <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
                         </svg>
                         <p class="mb-2 text-sm text-gray-500">
-                          <span class="font-semibold">Click to upload</span> or drag and drop
+                          <span class="font-semibold">{{ imageUploading ? 'Uploading image…' : 'Upload to image storage' }}</span>
                         </p>
-                        <p class="text-xs text-gray-500">PNG, JPG, JPEG (MAX. 2MB)</p>
+                        <p class="text-xs text-gray-500">PNG, JPG, GIF or WebP (max. 2MB)</p>
                       </div>
                       <input 
                         id="image-upload" 
                         type="file" 
                         class="hidden" 
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/gif,image/webp"
+                        :disabled="imageUploading"
                         @change="handleImageUpload"
                       />
                     </label>
                   </div>
+                  <p v-if="imageUploadError" class="mt-2 text-sm text-red-600" role="alert">{{ imageUploadError }}</p>
 
                   <!-- Or URL Input -->
                   <div class="mt-4">
-                    <p class="text-sm text-gray-600 mb-2 text-center">- OR -</p>
+                    <p class="text-sm text-gray-600 mb-2 text-center">Or use an existing image URL</p>
                     <input
                       v-model="productForm.image"
                       type="url"
                       class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors duration-200"
                       placeholder="https://example.com/image.jpg"
-                      @input="clearImagePreview"
+                      @input="updateImagePreview"
                     />
-                    <p class="text-xs text-gray-500 mt-2">Enter image URL or upload a file</p>
+                    <p class="text-xs text-gray-500 mt-2">Uploaded images are stored by the backend and attached to this product when you save.</p>
                   </div>
                 </div>
               </div>
@@ -376,7 +382,7 @@
               </button>
               <button
                 type="submit"
-                :disabled="submitting"
+                :disabled="submitting || imageUploading"
                 class="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold"
               >
                 {{ submitting ? 'Saving...' : (showEditModal ? 'Update Product' : 'Create Product') }}
@@ -393,7 +399,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../store/auth';
-import { productAPI } from '../../services/api';
+import { getApiErrorMessage, productAPI, uploadAPI } from '../../services/api';
 import type { Product, Category, CreateProductRequest } from '../../services/api';
 import AdminSidebar from '../../components/admin/AdminSidebar.vue';
 
@@ -408,6 +414,8 @@ const showAddModal = ref(false);
 const showEditModal = ref(false);
 const editingProductId = ref<number | null>(null);
 const imagePreview = ref<string | null>(null);
+const imageUploading = ref(false);
+const imageUploadError = ref('');
 
 type ProductForm = Omit<CreateProductRequest, 'original_price' | 'rating' | 'review_count'> & {
   original_price: number | null | '';
@@ -445,10 +453,12 @@ function resetForm() {
     category_id: 0
   };
   imagePreview.value = null;
+  imageUploadError.value = '';
   editingProductId.value = null;
 }
 
 function closeModal() {
+  if (imageUploading.value) return;
   showAddModal.value = false;
   showEditModal.value = false;
   resetForm();
@@ -470,11 +480,7 @@ function editProduct(product: Product) {
   
   // Set image preview if image exists
   if (product.image) {
-    if (product.image.startsWith('data:image')) {
-      imagePreview.value = product.image;
-    } else {
-      imagePreview.value = product.image;
-    }
+    imagePreview.value = product.image;
   } else {
     imagePreview.value = null;
   }
@@ -482,46 +488,43 @@ function editProduct(product: Product) {
   showEditModal.value = true;
 }
 
-function clearImagePreview() {
-  imagePreview.value = null;
+function updateImagePreview() {
+  imagePreview.value = (productForm.value.image ?? '').trim() || null;
+  imageUploadError.value = '';
 }
 
-function handleImageUpload(event: Event) {
+async function handleImageUpload(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   
   if (!file) return;
 
-  // Validate file type
-  if (!file.type.startsWith('image/')) {
-    alert('Please select an image file (PNG, JPG, JPEG)');
+  imageUploadError.value = '';
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    imageUploadError.value = 'Choose a JPEG, PNG, GIF or WebP image.';
+    input.value = '';
     return;
   }
 
-  // Validate file size (2MB max)
   if (file.size > 2 * 1024 * 1024) {
-    alert('Image size should be less than 2MB');
+    imageUploadError.value = 'Image must be 2MB or smaller.';
+    input.value = '';
     return;
   }
 
-  // Create file reader to convert image to base64
-  const reader = new FileReader();
-  
-  reader.onload = (e) => {
-    const base64String = e.target?.result as string;
-    
-    // Set the base64 string to the image field
-    productForm.value.image = base64String;
-    
-    // Set preview
-    imagePreview.value = base64String;
-  };
-  
-  reader.onerror = () => {
-    alert('Error reading file. Please try again.');
-  };
-  
-  reader.readAsDataURL(file);
+  imageUploading.value = true;
+  try {
+    const imageUrl = await uploadAPI.uploadImage(file, 'product');
+    productForm.value.image = imageUrl;
+    imagePreview.value = imageUrl;
+  } catch (error) {
+    console.error('Failed to upload product image:', error);
+    imageUploadError.value = getApiErrorMessage(error, 'Image could not be uploaded. Please try again.');
+  } finally {
+    imageUploading.value = false;
+    input.value = '';
+  }
 }
 
 async function fetchProducts() {
@@ -554,6 +557,7 @@ async function fetchCategories() {
 }
 
 async function submitProduct() {
+  if (imageUploading.value) return;
   submitting.value = true;
   
   try {

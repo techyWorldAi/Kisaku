@@ -213,10 +213,17 @@
         </template>
 
         <template v-else-if="activeSection === 'wishlist'">
-          <header class="section-page-heading">
-            <div><h1>My wishlist</h1><p>{{ wishlistStore.count }} saved product{{ wishlistStore.count === 1 ? '' : 's' }}.</p></div>
-            <router-link to="/shop" class="primary-button"><ShoppingBag :size="16" /> Browse products</router-link>
+          <header class="section-page-heading wishlist-heading">
+            <div class="wishlist-title">
+              <h1><Heart :size="27" aria-hidden="true" /> My Wishlist</h1>
+              <p>Save your favourite products for later.</p>
+            </div>
+            <button type="button" class="share-wishlist-button" @click="shareWishlist">
+              <Share2 :size="17" aria-hidden="true" />
+              Share Wishlist
+            </button>
           </header>
+          <p v-if="wishlistShareMessage" class="wishlist-share-message" role="status">{{ wishlistShareMessage }}</p>
           <div v-if="productsLoading" class="account-panel panel-message" role="status">Loading your saved products…</div>
           <div v-else-if="productsError" class="account-panel panel-error" role="alert">
             <span>{{ productsError }}</span><button type="button" @click="fetchProducts">Try again</button>
@@ -224,14 +231,74 @@
           <div v-else-if="wishlistProducts.length" class="wishlist-product-grid">
             <article v-for="product in wishlistProducts" :key="product.id" class="wishlist-product-card">
               <router-link :to="`/product/${product.id}`" class="wishlist-product-image">
-                <img v-if="product.image" :src="product.image" :alt="product.name" />
-                <ShoppingBag v-else :size="30" />
+                <img
+                  v-if="product.image && !unavailableWishlistImages.has(product.id)"
+                  :src="product.image"
+                  :alt="product.name"
+                  @error="unavailableWishlistImages.add(product.id)"
+                />
+                <ShoppingBag v-else :size="30" aria-hidden="true" />
+                <span v-if="discountPercentage(product) > 0" class="wishlist-sale-badge">
+                  {{ discountPercentage(product) }}% OFF
+                </span>
               </router-link>
-              <div><router-link :to="`/product/${product.id}`">{{ product.name }}</router-link><strong>KSh {{ Number(product.price).toLocaleString() }}</strong></div>
-              <button type="button" :aria-label="`Remove ${product.name} from wishlist`" @click="wishlistStore.toggle(product.id)">
+              <button
+                type="button"
+                class="wishlist-remove-icon"
+                :aria-label="`Remove ${product.name} from wishlist`"
+                @click="wishlistStore.toggle(product.id)"
+              >
                 <Heart :size="18" fill="currentColor" />
               </button>
+              <div class="wishlist-product-details">
+                <router-link :to="`/product/${product.id}`" class="wishlist-product-title">{{ product.name }}</router-link>
+                <div v-if="wishlistRating(product)" class="wishlist-product-rating" :aria-label="`Rated ${wishlistRating(product)} out of 5`">
+                  <Star
+                    v-for="star in 5"
+                    :key="star"
+                    :size="13"
+                    fill="currentColor"
+                    :class="{ muted: star > Math.round(Number(product.rating)) }"
+                    aria-hidden="true"
+                  />
+                  <strong>{{ wishlistRating(product) }}</strong>
+                  <span v-if="product.review_count">({{ Number(product.review_count).toLocaleString() }} reviews)</span>
+                </div>
+                <div class="wishlist-product-pricing">
+                  <strong>KSh {{ Number(product.price).toLocaleString() }}</strong>
+                  <del v-if="discountPercentage(product)">KSh {{ Number(product.original_price).toLocaleString() }}</del>
+                  <span v-if="discountPercentage(product)" class="wishlist-discount">{{ discountPercentage(product) }}% OFF</span>
+                </div>
+                <span class="wishlist-stock" :class="{ unavailable: product.stock <= 0 }">
+                  <span aria-hidden="true"></span>{{ product.stock > 0 ? 'In Stock' : 'Out of Stock' }}
+                </span>
+                <div class="wishlist-product-actions">
+                  <button
+                    type="button"
+                    class="wishlist-cart-button"
+                    :disabled="product.stock <= 0"
+                    @click="addWishlistProductToCart(product)"
+                  >
+                    <ShoppingCart :size="15" aria-hidden="true" /> Add to Cart
+                  </button>
+                  <button
+                    type="button"
+                    class="wishlist-remove-button"
+                    @click="wishlistStore.toggle(product.id)"
+                  >
+                    <Trash2 :size="14" aria-hidden="true" /><span>Remove</span>
+                  </button>
+                </div>
+              </div>
             </article>
+            <router-link to="/shop" class="wishlist-shop-promo">
+              <span class="wishlist-promo-art"><ShoppingBag :size="32" aria-hidden="true" /></span>
+              <span class="wishlist-promo-copy">
+                <strong>Still thinking? Don't miss out!</strong>
+                <small>Turn your wishlist into a cart and enjoy fast delivery across Kenya.</small>
+              </span>
+              <span class="wishlist-promo-link">Shop Now <ArrowRight :size="15" aria-hidden="true" /></span>
+            </router-link>
           </div>
           <div v-else class="account-panel section-empty">
             <Heart :size="30" /><h2>Your wishlist is empty</h2><p>Tap the heart on a product to save it here for later.</p>
@@ -300,11 +367,14 @@ import {
   Truck,
   LayoutDashboard,
   Settings,
+  Share2,
+  Star,
 } from 'lucide-vue-next';
 import Header from '../components/layout/Menu.vue';
 import { orderAPI, productAPI } from '../services/api';
 import type { Order, Product } from '../services/api';
 import { useAuthStore } from '../store/auth';
+import { useCartStore } from '../store/cart';
 import { useWishlistStore } from '../store/wishlist';
 import { formatOrderNumber } from '../utils/orderNumber';
 
@@ -321,12 +391,14 @@ interface SavedAddress {
 }
 
 const authStore = useAuthStore();
+const cartStore = useCartStore();
 const wishlistStore = useWishlistStore();
 const router = useRouter();
 const route = useRoute();
 const activeSection = ref<AccountSection>('dashboard');
 const userOrders = ref<Order[]>([]);
 const products = ref<Product[]>([]);
+const unavailableWishlistImages = ref(new Set<number>());
 const addresses = ref<SavedAddress[]>([]);
 const ordersLoading = ref(true);
 const productsLoading = ref(true);
@@ -335,6 +407,7 @@ const productsError = ref('');
 const showAddressForm = ref(false);
 const editingAddressId = ref<string | null>(null);
 const addressError = ref('');
+const wishlistShareMessage = ref('');
 const addressForm = reactive({
   label: '',
   recipient: '',
@@ -376,6 +449,59 @@ const initials = computed(() => (authStore.user?.name ?? '')
   .map((part) => part[0]?.toUpperCase())
   .join(''));
 const addressStorageKey = computed(() => `kisakuAddresses-${authStore.user?.id ?? 'unknown'}`);
+
+function addWishlistProductToCart(product: Product) {
+  if (product.stock <= 0) return;
+  cartStore.addToCart({
+    id: product.id,
+    name: product.name,
+    price: Number(product.price),
+    quantity: 1,
+    image: product.image,
+  });
+}
+
+function discountPercentage(product: Product) {
+  const originalPrice = Number(product.original_price);
+  const price = Number(product.price);
+  if (!Number.isFinite(originalPrice) || originalPrice <= price || price <= 0) return 0;
+  return Math.round((1 - price / originalPrice) * 100);
+}
+
+function wishlistRating(product: Product) {
+  return typeof product.rating === 'number' ? product.rating.toFixed(1) : '';
+}
+
+async function shareWishlist() {
+  if (!wishlistProducts.value.length) {
+    wishlistShareMessage.value = 'Add products to your wishlist before sharing it.';
+    return;
+  }
+
+  const shareText = wishlistProducts.value.map((product) => (
+    `${product.name} — KSh ${Number(product.price).toLocaleString()} ${window.location.origin}/product/${product.id}`
+  )).join('\n');
+  wishlistShareMessage.value = '';
+
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: `${authStore.user?.name ?? 'My'} wishlist`,
+        text: `Take a look at the products I saved:\n${shareText}`,
+      });
+      wishlistShareMessage.value = 'Wishlist link ready to share.';
+      return;
+    }
+
+    if (!navigator.clipboard) throw new Error('Clipboard access is unavailable in this browser.');
+    await navigator.clipboard.writeText(`Take a look at the products I saved:\n${shareText}`);
+    wishlistShareMessage.value = 'Wishlist details copied.';
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') return;
+    console.error('Could not share wishlist:', error);
+    wishlistShareMessage.value = 'We could not share your wishlist. Please try again.';
+  }
+}
 
 async function fetchUserOrders() {
   ordersLoading.value = true;
@@ -1317,25 +1443,74 @@ button.stat-card:hover {
   font-size: 0.75rem;
 }
 
+.wishlist-heading {
+  margin-bottom: 14px;
+}
+
+.wishlist-title h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wishlist-title h1 svg {
+  color: #102c49;
+}
+
+.share-wishlist-button {
+  display: inline-flex;
+  min-height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 13px;
+  border: 1px solid #8bb4ff;
+  border-radius: 7px;
+  background: #fff;
+  color: #075ce5;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.share-wishlist-button:hover {
+  background: #f3f7ff;
+}
+
+.wishlist-share-message {
+  margin: -5px 0 10px;
+  color: #075397;
+  font-size: 0.73rem;
+}
+
 .wishlist-product-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 10px;
 }
 
 .wishlist-product-card {
   position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
   overflow: hidden;
-  border: 1px solid #e1e8f0;
-  border-radius: 8px;
+  border: 1px solid #e3eaf3;
+  border-radius: 9px;
   background: #fff;
+  box-shadow: 0 2px 8px rgb(16 42 67 / 4%);
 }
 
 .wishlist-product-image {
+  position: relative;
   display: grid;
-  aspect-ratio: 1.2;
+  aspect-ratio: 1.12;
   place-items: center;
-  background: #f4f6f9;
+  overflow: hidden;
+  background: #fbfcfe;
   color: #718198;
 }
 
@@ -1343,43 +1518,239 @@ button.stat-card:hover {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  padding: 8px;
+  padding: 7px;
 }
 
-.wishlist-product-card > div {
+.wishlist-sale-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #ffe4e6;
+  color: #c62828;
+  font-size: 0.59rem;
+  font-weight: 750;
+}
+
+.wishlist-remove-icon {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
   display: grid;
-  gap: 5px;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 92%);
+  color: #ef233c;
+  cursor: pointer;
+}
+
+.wishlist-remove-icon:hover {
+  background: #fff0f1;
+}
+
+.wishlist-product-details {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 7px;
   padding: 9px;
 }
 
-.wishlist-product-card > div a {
+.wishlist-product-title {
+  display: -webkit-box;
+  min-height: 36px;
   overflow: hidden;
   color: #17355b;
-  font-size: 0.73rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 750;
+  line-height: 1.3;
   text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.wishlist-product-title:hover {
+  color: #075ce5;
+}
+
+.wishlist-product-rating {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: #f59e0b;
+  font-size: 0.61rem;
+}
+
+.wishlist-product-rating .muted {
+  color: #d5dce5;
+}
+
+.wishlist-product-rating strong {
+  margin-left: 3px;
+  color: #334155;
+}
+
+.wishlist-product-rating span {
+  overflow: hidden;
+  color: #64748b;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.wishlist-product-card > div strong {
-  color: #d82c2c;
-  font-size: 0.76rem;
+.wishlist-product-pricing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
 }
 
-.wishlist-product-card > button {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 1px solid #f4dce2;
+.wishlist-product-pricing strong {
+  color: #102c49;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.wishlist-product-pricing del {
+  color: #64748b;
+  font-size: 0.63rem;
+}
+
+.wishlist-product-pricing .wishlist-discount {
+  padding: 3px 5px;
+  border-radius: 999px;
+  background: #ffe4e6;
+  color: #c62828;
+  font-size: 0.58rem;
+  font-weight: 750;
+}
+
+.wishlist-stock {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #e8f8e9;
+  color: #15803d;
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.wishlist-stock > span {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #fff;
-  color: #e11d48;
+  background: currentColor;
+}
+
+.wishlist-stock.unavailable {
+  background: #fff0f0;
+  color: #b42318;
+}
+
+.wishlist-product-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 2px;
+}
+
+.wishlist-cart-button,
+.wishlist-remove-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 7px;
+  border: 1px solid #f58216;
+  border-radius: 6px;
+  background: #f58216;
+  color: #fff;
+  font: inherit;
+  font-size: 0.65rem;
+  font-weight: 750;
   cursor: pointer;
+}
+
+.wishlist-cart-button:hover:not(:disabled) {
+  background: #e97308;
+}
+
+.wishlist-cart-button:disabled {
+  border-color: #e2e8f0;
+  background: #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.wishlist-remove-button {
+  border-color: #8bb4ff;
+  background: #fff;
+  color: #17355b;
+}
+
+.wishlist-remove-button:hover {
+  background: #f3f7ff;
+}
+
+.wishlist-shop-promo {
+  display: flex;
+  min-height: 66px;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 14px;
+  border-radius: 9px;
+  background: linear-gradient(100deg, #e8f0ff, #dce8ff);
+  color: #123b69;
+  text-decoration: none;
+}
+
+.wishlist-promo-art {
+  display: grid;
+  width: 56px;
+  height: 48px;
+  flex: 0 0 56px;
+  place-items: center;
+  border-radius: 8px;
+  background: #fff;
+  color: #f58216;
+}
+
+.wishlist-promo-copy {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+}
+
+.wishlist-promo-copy strong {
+  font-size: 0.78rem;
+}
+
+.wishlist-promo-copy small {
+  color: #415c7b;
+  font-size: 0.68rem;
+}
+
+.wishlist-promo-link {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: 6px;
+  background: #f58216;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 750;
 }
 
 .settings-panel h2 {
@@ -1527,6 +1898,10 @@ button.stat-card:hover {
   .help-contact {
     display: none;
   }
+
+  .wishlist-product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 780px) {
@@ -1598,6 +1973,10 @@ button.stat-card:hover {
     min-width: 590px;
   }
 
+  .wishlist-product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .account-benefits {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1657,19 +2036,89 @@ button.stat-card:hover {
     align-items: flex-start;
   }
 
+  .wishlist-heading {
+    gap: 8px;
+  }
+
+  .wishlist-title h1 {
+    gap: 6px;
+  }
+
   .section-page-heading p {
     font-size: 0.72rem;
   }
 
-  .section-page-heading .primary-button {
+  .share-wishlist-button {
     flex: 0 0 auto;
+    min-height: 36px;
+    gap: 5px;
     padding: 7px 8px;
     font-size: 0.67rem;
   }
 
-  .address-form,
-  .saved-address-grid,
   .wishlist-product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .wishlist-product-details {
+    gap: 6px;
+    padding: 7px;
+  }
+
+  .wishlist-product-title {
+    min-height: 34px;
+    font-size: 0.7rem;
+  }
+
+  .wishlist-product-rating {
+    gap: 1px;
+  }
+
+  .wishlist-product-rating svg {
+    width: 11px;
+    height: 11px;
+  }
+
+  .wishlist-product-rating span {
+    display: none;
+  }
+
+  .wishlist-product-pricing strong {
+    font-size: 0.78rem;
+  }
+
+  .wishlist-cart-button,
+  .wishlist-remove-button {
+    min-height: 33px;
+    gap: 3px;
+    padding: 5px;
+    font-size: 0.59rem;
+  }
+
+  .wishlist-remove-button svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .wishlist-promo-art {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .wishlist-promo-copy small {
+    display: none;
+  }
+
+  .wishlist-promo-link {
+    gap: 3px;
+    padding: 6px;
+    font-size: 0.62rem;
+  }
+
+  .address-form,
+  .saved-address-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
