@@ -18,7 +18,8 @@ defineProps<{ banner?: StorefrontBanner }>();
 
 <style scoped>
 .hero-shell {
-  width: min(1240px, calc(100% - 40px));
+  width: min(1472px, calc(100% - 40px));
+  aspect-ratio: 3.48 / 1;
   margin: 18px auto 0;
   overflow: hidden;
   border-radius: 8px;
@@ -26,17 +27,21 @@ defineProps<{ banner?: StorefrontBanner }>();
 
 .hero-link {
   display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .hero-link img {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: fill;
 }
 
 @media (max-width: 680px) {
   .hero-shell {
     width: calc(100% - 28px);
+    aspect-ratio: 3.48 / 1;
     margin-top: 12px;
     border-radius: 6px;
   }
