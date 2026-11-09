@@ -1,6 +1,0 @@
-import{c as h}from"./x-BZlC_RSO.js";import{N as g,u as d,e as n,f as m,L as S}from"./index-aIdV7m29.js";/**
- * @license lucide-vue-next v0.544.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */const w=h("heart",[["path",{d:"M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5",key:"mvr1a0"}]]);function i(s){return`kisakuWishlist-${s??"guest"}`}function l(s){const r=localStorage.getItem(s);if(!r)return[];try{const e=JSON.parse(r);if(!Array.isArray(e)||!e.every(o=>Number.isInteger(o)))throw new Error("Stored wishlist must be an array of product IDs.");return e}catch(e){return console.error("Could not read the saved wishlist:",e),[]}}const I=g("wishlist",()=>{const s=d(),r=n(i(s.user?.id)),e=n(l(r.value)),o=m(()=>e.value.length);S(()=>s.user?.id,t=>{r.value=i(t),e.value=l(r.value)});function u(t){return e.value.includes(t)}function c(t){e.value=u(t)?e.value.filter(a=>a!==t):[...e.value,t],localStorage.setItem(r.value,JSON.stringify(e.value))}function v(t){const a=e.value.filter(f=>t.has(f));a.length!==e.value.length&&(e.value=a,localStorage.setItem(r.value,JSON.stringify(a)))}return{productIds:e,count:o,isSaved:u,toggle:c,removeMissingProducts:v}});export{w as H,I as u};
