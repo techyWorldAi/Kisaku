@@ -791,6 +791,23 @@ onMounted(() => {
     padding: 20px 0 28px;
   }
 
+  .product-grid {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 2px 1px 10px;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .product-card,
+  .product-skeleton {
+    flex: 0 0 43%;
+    scroll-snap-align: start;
+  }
+
   .catalog-section + .catalog-section {
     margin-top: 24px;
   }
@@ -883,19 +900,8 @@ onMounted(() => {
     font-size: 0.62rem;
   }
 
-  .product-grid {
-    display: flex;
-    gap: 10px;
-    overflow-x: auto;
-    padding: 2px 1px 10px;
-    scrollbar-width: none;
-    scroll-snap-type: x mandatory;
-  }
-
   .product-card,
   .product-skeleton {
-    flex: 0 0 43%;
-    scroll-snap-align: start;
     border: 1px solid #edf0f3;
     border-radius: 11px;
     box-shadow: 0 2px 10px rgb(16 42 67 / 6%);

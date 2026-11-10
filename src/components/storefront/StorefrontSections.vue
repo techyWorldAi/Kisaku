@@ -908,7 +908,23 @@ onUnmounted(() => {
   }
 
   .extra-product-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 2px 1px 10px;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .extra-product-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .extra-product-card {
+    flex: 0 0 43%;
+    scroll-snap-align: start;
   }
 
   .product-row-promo {
