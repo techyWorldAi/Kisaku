@@ -46,6 +46,16 @@
           <h1>{{ selectedCategory ? getCategoryName(selectedCategory) : 'Shop All Products' }}</h1>
         </div>
         <div class="shop-toolbar">
+          <button
+            type="button"
+            class="mobile-filter-toggle"
+            :aria-expanded="mobileFiltersOpen"
+            aria-controls="shop-filter-panel"
+            @click="mobileFiltersOpen = true"
+          >
+            <SlidersHorizontal :size="15" />
+            Filters
+          </button>
           <label for="shop-sort">Sort by:</label>
           <select id="shop-sort" v-model="sortBy" aria-label="Sort products" @change="applyFilters">
             <option value="popular">Most popular</option>
@@ -59,11 +69,32 @@
       </div>
 
       <div class="catalog-layout">
-        <aside class="filter-sidebar">
-          <section class="filter-panel" aria-label="Product filters">
+        <div
+          v-if="mobileFiltersOpen"
+          class="mobile-filter-backdrop"
+          aria-hidden="true"
+          @click="mobileFiltersOpen = false"
+        />
+        <aside
+          id="shop-filter-panel"
+          class="filter-sidebar"
+          :class="{ 'is-open': mobileFiltersOpen }"
+          :role="mobileFiltersOpen ? 'dialog' : undefined"
+          :aria-modal="mobileFiltersOpen ? 'true' : undefined"
+          aria-label="Product filters"
+        >
+          <section class="filter-panel">
             <header class="filter-heading">
               <h2><SlidersHorizontal :size="15" /> Filters</h2>
               <button type="button" class="clear-filters" @click="resetFilters">Clear all</button>
+              <button
+                type="button"
+                class="mobile-filter-close"
+                aria-label="Close filters"
+                @click="mobileFiltersOpen = false"
+              >
+                <X :size="18" />
+              </button>
             </header>
 
             <section class="filter-group" aria-labelledby="category-filter-title">
@@ -295,6 +326,7 @@ const searchQuery = ref(String(route.query.search ?? ''));
 const selectedCategory = ref<number | string>(String(route.query.category ?? ''));
 const sortBy = ref(String(route.query.sort ?? 'popular'));
 const selectedPriceRange = ref(String(route.query.price ?? ''));
+const mobileFiltersOpen = ref(false);
 const unavailableImages = ref(new Set<number>());
 const addedProductId = ref<number | null>(null);
 let feedbackTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -1523,6 +1555,11 @@ watch(
   background: #df700d;
 }
 
+.mobile-filter-toggle,
+.mobile-filter-close {
+  display: none;
+}
+
 @media (max-width: 1100px) {
   .catalog-layout {
     grid-template-columns: 172px minmax(0, 1fr);
@@ -1687,6 +1724,70 @@ watch(
   .product-card-actions :deep(.product-action) {
     min-height: 46px;
     font-size: 0.84rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .mobile-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 34px;
+    padding: 0 9px;
+    border: 1px solid #d6dde5;
+    border-radius: 6px;
+    background: #fff;
+    color: #102a43;
+    font-size: 0.72rem;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .filter-sidebar {
+    display: none;
+    position: fixed;
+    z-index: 41;
+    top: 50%;
+    left: 50%;
+    width: min(420px, calc(100vw - 32px));
+    max-height: calc(100dvh - 40px);
+    margin: 0;
+    overflow-y: auto;
+    transform: translate(-50%, -50%);
+  }
+
+  .filter-sidebar.is-open {
+    display: block;
+  }
+
+  .mobile-filter-backdrop {
+    position: fixed;
+    z-index: 40;
+    inset: 0;
+    background: rgb(16 42 67 / 48%);
+  }
+
+  .filter-panel {
+    padding: 16px;
+  }
+
+  .filter-heading {
+    align-items: center;
+  }
+
+  .mobile-filter-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: #f1f5f9;
+    color: #102a43;
+    cursor: pointer;
   }
 }
 
