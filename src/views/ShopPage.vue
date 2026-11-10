@@ -110,7 +110,7 @@
                   type="radio"
                   name="shop-category"
                   :value="String(category.id)"
-                  @change="applyFilters"
+                  @change="applyFiltersAndClose"
                 />
                 <span>{{ category.name }}</span>
                 <small>{{ getCategoryCount(category.id) }}</small>
@@ -125,7 +125,7 @@
                   type="radio"
                   name="shop-price"
                   :value="range.label"
-                  @change="applyFilters"
+                  @change="applyFiltersAndClose"
                 />
                 <span>{{ range.label }}</span>
               </label>
@@ -502,6 +502,11 @@ function applyFilters() {
   void router.push({ path: '/shop', query });
 }
 
+function applyFiltersAndClose() {
+  applyFilters();
+  mobileFiltersOpen.value = false;
+}
+
 function markImageUnavailable(productId: number) {
   unavailableImages.value.add(productId);
 }
@@ -522,17 +527,17 @@ function getCategoryCount(categoryId: number) {
 
 function clearCategory() {
   selectedCategory.value = '';
-  applyFilters();
+  applyFiltersAndClose();
 }
 
 function clearPriceRange() {
   selectedPriceRange.value = '';
-  applyFilters();
+  applyFiltersAndClose();
 }
 
 function clearSearch() {
   searchQuery.value = '';
-  applyFilters();
+  applyFiltersAndClose();
 }
 
 function resetFilters() {
@@ -540,7 +545,7 @@ function resetFilters() {
   selectedCategory.value = '';
   selectedPriceRange.value = '';
   sortBy.value = 'popular';
-  applyFilters();
+  applyFiltersAndClose();
 }
 
 async function fetchProducts() {
