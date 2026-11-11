@@ -20,7 +20,7 @@
             type="button"
             :class="{ active: activeSection === item.id }"
             :aria-current="activeSection === item.id ? 'page' : undefined"
-            @click="activeSection = item.id"
+            @click="setActiveSection(item.id)"
           >
             <component :is="item.icon" :size="18" aria-hidden="true" />
             <span>{{ item.label }}</span>
@@ -63,12 +63,12 @@
               <span class="stat-info"><strong>{{ userOrders.length }}</strong><small>Total orders</small></span>
               <span class="stat-link">View orders <ArrowRight :size="13" /></span>
             </button>
-            <button type="button" class="stat-card stat-pink" @click="activeSection = 'wishlist'">
+            <button type="button" class="stat-card stat-pink" @click="setActiveSection('wishlist')">
               <span class="stat-icon"><Heart :size="23" /></span>
               <span class="stat-info"><strong>{{ wishlistStore.count }}</strong><small>Wishlist items</small></span>
               <span class="stat-link">View wishlist <ArrowRight :size="13" /></span>
             </button>
-            <button type="button" class="stat-card stat-green" @click="activeSection = 'addresses'">
+            <button type="button" class="stat-card stat-green" @click="setActiveSection('addresses')">
               <span class="stat-icon"><MapPin :size="23" /></span>
               <span class="stat-info"><strong>{{ addresses.length }}</strong><small>Saved addresses</small></span>
               <span class="stat-link">Manage addresses <ArrowRight :size="13" /></span>
@@ -132,7 +132,7 @@
               <section class="account-panel account-information">
                 <header class="panel-heading">
                   <h2><UserRound :size="18" /> Account information</h2>
-                  <button type="button" @click="activeSection = 'settings'">Account settings</button>
+                  <button type="button" @click="setActiveSection('settings')">Account settings</button>
                 </header>
                 <div class="account-information-body">
                   <span class="information-avatar"><UserRound :size="22" /></span>
@@ -148,7 +148,7 @@
               <section class="account-panel dashboard-address-panel">
                 <header class="panel-heading">
                   <h2><MapPin :size="18" /> Delivery addresses</h2>
-                  <button type="button" @click="activeSection = 'addresses'">Manage addresses <ArrowRight :size="13" /></button>
+                  <button type="button" @click="setActiveSection('addresses')">Manage addresses <ArrowRight :size="13" /></button>
                 </header>
                 <div v-if="defaultAddress" class="default-address">
                   <MapPin :size="16" />
@@ -161,7 +161,7 @@
               <section class="account-panel dashboard-wishlist-panel">
                 <header class="panel-heading">
                   <h2><Heart :size="18" /> My wishlist</h2>
-                  <button type="button" @click="activeSection = 'wishlist'">View wishlist <ArrowRight :size="13" /></button>
+                  <button type="button" @click="setActiveSection('wishlist')">View wishlist <ArrowRight :size="13" /></button>
                 </header>
                 <div v-if="wishlistProducts.length" class="wishlist-preview">
                   <router-link v-for="product in wishlistProducts.slice(0, 4)" :key="product.id" :to="`/product/${product.id}`">
@@ -345,7 +345,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   ArrowRight,
@@ -453,11 +453,15 @@ const initials = computed(() => (authStore.user?.name ?? '')
   .join(''));
 const addressStorageKey = computed(() => `kisakuAddresses-${authStore.user?.id ?? 'unknown'}`);
 
-async function showMyOrders() {
+function setActiveSection(section: AccountSection) {
+  activeSection.value = section;
+  window.scrollTo(0, 0);
+}
+
+function showMyOrders() {
   activeSection.value = 'dashboard';
-  await router.replace('/profile');
-  await nextTick();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  void router.replace('/profile');
+  window.scrollTo(0, 0);
 }
 
 function addWishlistProductToCart(product: Product) {
