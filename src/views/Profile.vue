@@ -28,10 +28,10 @@
               {{ notificationCount }}
             </span>
           </button>
-          <router-link to="/orders">
+          <button type="button" @click="showMyOrders">
             <Package :size="18" aria-hidden="true" />
             <span>My orders</span>
-          </router-link>
+          </button>
           <router-link to="/about">
             <Headphones :size="18" aria-hidden="true" />
             <span>Help &amp; support</span>
@@ -58,7 +58,7 @@
           </header>
 
           <div class="account-stats">
-            <button type="button" class="stat-card stat-blue" @click="router.push('/orders')">
+            <button type="button" class="stat-card stat-blue" @click="showMyOrders">
               <span class="stat-icon"><ShoppingCart :size="23" /></span>
               <span class="stat-info"><strong>{{ userOrders.length }}</strong><small>Total orders</small></span>
               <span class="stat-link">View orders <ArrowRight :size="13" /></span>
@@ -76,16 +76,15 @@
             <div class="stat-card stat-orange">
               <span class="stat-icon"><CreditCard :size="23" /></span>
               <span class="stat-info"><strong>KSh {{ totalSpent.toLocaleString() }}</strong><small>Total spent</small></span>
-              <router-link class="stat-link" to="/orders">View spending <ArrowRight :size="13" /></router-link>
+              <button type="button" class="stat-link" @click="showMyOrders">View spending <ArrowRight :size="13" /></button>
             </div>
           </div>
 
           <div class="account-dashboard-grid">
             <div class="account-primary-column">
-              <section class="account-panel recent-orders-panel">
+              <section id="profile-my-orders" class="account-panel recent-orders-panel">
                 <header class="panel-heading">
-                  <h2><Package :size="19" /> Recent orders</h2>
-                  <router-link to="/orders">View all orders <ArrowRight :size="13" /></router-link>
+                  <h2><Package :size="19" /> My Orders</h2>
                 </header>
                 <div v-if="ordersLoading" class="panel-message" role="status">Loading your orders…</div>
                 <div v-else-if="ordersError" class="panel-error" role="alert">
@@ -107,7 +106,11 @@
                           </span>
                         </td>
                         <td data-label="Total">KSh {{ order.total.toLocaleString() }}</td>
-                        <td data-label="Action"><router-link to="/orders">Track order</router-link></td>
+                        <td data-label="Action">
+                          <router-link :to="{ name: 'TrackOrder', query: { order: order.id } }">
+                            Track order
+                          </router-link>
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -323,7 +326,7 @@
             <article v-for="order in sortedOrders" :key="order.id" class="account-panel notification-item">
               <span class="notification-icon"><Package :size="19" /></span>
               <div><strong>Order #{{ formatOrderNumber(order.id, order.order_number) }} — {{ order.status }}</strong><p>Order total: KSh {{ order.total.toLocaleString() }} · {{ formatDate(order.created_at) }}</p></div>
-              <router-link to="/orders">View order</router-link>
+              <button type="button" @click="showMyOrders">View order</button>
             </article>
           </div>
           <div v-else class="account-panel section-empty"><Bell :size="30" /><h2>You’re all caught up</h2><p>Order updates will appear here.</p></div>
@@ -342,7 +345,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   ArrowRight,
@@ -435,7 +438,7 @@ watch(() => route.query.section, (section) => {
 const sortedOrders = computed(() => [...userOrders.value].sort(
   (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
 ));
-const recentOrders = computed(() => sortedOrders.value.slice(0, 3));
+const recentOrders = computed(() => sortedOrders.value);
 const totalSpent = computed(() => userOrders.value.reduce((sum, order) => sum + Number(order.total || 0), 0));
 const notificationCount = computed(() => userOrders.value.filter((order) => (
   order.status === 'pending' || order.status === 'confirmed' || order.status === 'shipped'
@@ -449,6 +452,13 @@ const initials = computed(() => (authStore.user?.name ?? '')
   .map((part) => part[0]?.toUpperCase())
   .join(''));
 const addressStorageKey = computed(() => `kisakuAddresses-${authStore.user?.id ?? 'unknown'}`);
+
+async function showMyOrders() {
+  activeSection.value = 'dashboard';
+  await router.replace('/profile');
+  await nextTick();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 function addWishlistProductToCart(product: Product) {
   if (product.stock <= 0) return;
@@ -1840,6 +1850,21 @@ button.stat-card:hover {
   font-size: 0.68rem;
   font-weight: 700;
   text-decoration: none;
+}
+
+.notification-item > button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #075ce5;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#profile-my-orders {
+  scroll-margin-top: 88px;
 }
 
 .account-benefits {

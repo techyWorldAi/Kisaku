@@ -357,7 +357,7 @@ onUnmounted(() => {
         </form>
 
         <div class="header-actions">
-          <router-link class="header-action desktop-action" to="/orders" @click="closeOverlays">
+          <router-link class="header-action desktop-action" to="/track-order" @click="closeOverlays">
             Track order
           </router-link>
           <router-link class="header-action desktop-action" to="/about" @click="closeOverlays">
@@ -495,7 +495,7 @@ onUnmounted(() => {
       >
         {{ item.label }}
       </router-link>
-      <router-link to="/orders" @click="closeOverlays">Track order</router-link>
+      <router-link to="/track-order" @click="closeOverlays">Track order</router-link>
     </div>
   </div>
 

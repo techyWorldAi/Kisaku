@@ -4,7 +4,6 @@ import { useAuthStore } from '../store/auth';
 const router = createRouter({
   history: createWebHistory('/'), // 2. Updated to standard root web history
   scrollBehavior() {
-    // Scroll to top on every route change
     return { top: 0 };
   },
   routes: [
@@ -104,6 +103,12 @@ const router = createRouter({
       path: '/orders',
       name: 'Orders',
       component: () => import('../views/Orders.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/track-order',
+      name: 'TrackOrder',
+      component: () => import('../views/TrackOrder.vue'),
       meta: { requiresAuth: true }
     },
     {
