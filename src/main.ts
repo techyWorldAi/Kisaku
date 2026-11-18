@@ -12,7 +12,13 @@ const fallbackParams = new URL(window.location.href).searchParams;
 const fallbackPath = fallbackParams.get('p');
 if (fallbackPath) {
   const fallbackUrl = new URL(window.location.href);
-  fallbackUrl.pathname = `/${fallbackPath.replace(/^\/+/, '')}`;
+  let decodedFallbackPath = fallbackPath;
+  try {
+    decodedFallbackPath = decodeURIComponent(fallbackPath);
+  } catch {
+    decodedFallbackPath = fallbackPath;
+  }
+  fallbackUrl.pathname = `/${decodedFallbackPath.replace(/^\/+/, '').replace(/%2F/gi, '/')}`;
   fallbackParams.delete('p');
   fallbackUrl.search = fallbackParams.toString();
   window.history.replaceState({}, '', `${fallbackUrl.pathname}${fallbackUrl.search}${fallbackUrl.hash}`);
