@@ -8,7 +8,7 @@
       var l = window.location;
     var path = l.pathname.replace(/^\/+/, '').replace(/&/g, '~and~');
     var query = l.search ? '&' + l.search.slice(1).replace(/&/g, '&') : '';
-    l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/?p=' + encodeURIComponent(path) + query + l.hash);
+    l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/?p=' + path + query + l.hash);
     </script>
   </head>
   <body>
