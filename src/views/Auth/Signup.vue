@@ -9,15 +9,27 @@
             alt="Kisaku Supply Agencies"
           />
         </router-link>
+        <div class="auth-brand-support">
+          <span aria-hidden="true">Need help?</span>
+          <a href="/about">Contact support &rarr;</a>
+        </div>
         <div class="auth-brand-message">
-          <h1>Make everyday shopping easier.</h1>
-          <p>Create an account to keep your orders and account details together.</p>
+          <h1>Shop smart.<br />Live <span>better</span></h1>
+          <p>Create an account for faster checkout, order updates and easier shopping.</p>
+          <ul>
+            <li>Fast &amp; secure shopping</li>
+            <li>Easy order tracking</li>
+            <li>Reliable support</li>
+          </ul>
         </div>
         <span class="auth-brand-foot">Everyday products. Great prices. Delivered to you.</span>
       </aside>
 
       <section class="auth-form-panel">
         <div class="auth-form-card">
+          <router-link to="/" class="auth-mobile-brand" aria-label="Kisaku Supply Agencies home">
+            <img src="/Kisaku_Supply_Agencies_Logo-removebg-preview.png" alt="Kisaku" />
+          </router-link>
           <h2 class="auth-form-heading">Create your account</h2>
           <p class="auth-form-subtitle">Join Kisaku Supply Agencies and get started with your next order.</p>
 

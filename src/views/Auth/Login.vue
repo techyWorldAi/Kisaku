@@ -9,16 +9,28 @@
             alt="Kisaku Supply Agencies"
           />
         </router-link>
+        <div class="auth-brand-support">
+          <span aria-hidden="true">Need help?</span>
+          <a href="/about">Contact support &rarr;</a>
+        </div>
         <div class="auth-brand-message">
-          <h1>Welcome back to smarter shopping.</h1>
-          <p>Sign in to pick up where you left off, manage your orders, and discover everyday essentials.</p>
+          <h1>Keep an eye<br />on your <span>orders</span></h1>
+          <p>Track your purchases, get updates and enjoy a seamless shopping experience.</p>
+          <ul>
+            <li>Fast &amp; secure shopping</li>
+            <li>Easy order tracking</li>
+            <li>Reliable support</li>
+          </ul>
         </div>
         <span class="auth-brand-foot">Everyday products. Great prices. Delivered to you.</span>
       </aside>
 
       <section class="auth-form-panel">
         <div class="auth-form-card">
-          <h2 class="auth-form-heading">Sign in to your account</h2>
+          <router-link to="/" class="auth-mobile-brand" aria-label="Kisaku Supply Agencies home">
+            <img src="/Kisaku_Supply_Agencies_Logo-removebg-preview.png" alt="Kisaku" />
+          </router-link>
+          <h2 class="auth-form-heading">Welcome Back</h2>
           <p class="auth-form-subtitle">Access your account to continue shopping and track your orders.</p>
 
           <section v-if="demoMode" class="auth-demo-panel">
