@@ -6,9 +6,12 @@
     <script type="text/javascript">
       // This script takes the intended path and converts it into a safe parameter string
       var l = window.location;
-    var path = l.pathname.replace(/^\/+/, '').replace(/&/g, '~and~');
-    var query = l.search ? '&' + l.search.slice(1).replace(/&/g, '&') : '';
-    l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/?p=' + path + query + l.hash);
+      var path = l.pathname.replace(/^\/+/, '').replace(/&/g, '~and~');
+      var params = new URLSearchParams(l.search);
+      var token = params.get('token') || params.get('reset_token') || params.get('invite_token');
+      if (token) sessionStorage.setItem('vendorPasswordResetToken', token);
+      var query = l.search ? '&' + l.search.slice(1).replace(/&/g, '&') : '';
+      l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/?p=' + path + query + l.hash);
     </script>
   </head>
   <body>
