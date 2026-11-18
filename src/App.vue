@@ -5,7 +5,12 @@ import { useRoute } from 'vue-router';
 import Footer from './components/layout/Footer.vue';
 
 const route = useRoute();
-const hideFooter = computed(() => route.path.startsWith('/vendor') || route.path.startsWith('/admin'));
+const hideFooter = computed(() => (
+  route.path === '/login'
+  || route.path === '/signup'
+  || route.path.startsWith('/vendor')
+  || route.path.startsWith('/admin')
+));
 </script>
 
 <template>
