@@ -749,4 +749,36 @@ onMounted(async () => {
     padding-left: 0;
   }
 }
+
+:deep(.fixed.inset-0 .relative.bg-white) {
+  border-radius: 8px;
+}
+
+:deep(.fixed.inset-0 [class*="rounded-t-2xl"]) {
+  border-radius: 8px 8px 0 0;
+}
+
+:deep(.admin-list-row button) {
+  white-space: nowrap;
+}
+
+@media (max-width: 800px) {
+  :deep(.admin-list-row) {
+    gap: 14px 10px;
+  }
+
+  :deep(.admin-list-item) {
+    border: 1px solid #dde5ee;
+    border-radius: 8px;
+  }
+
+  :deep(.divide-y) {
+    display: grid;
+    gap: 10px;
+  }
+
+  :deep(.divide-y > .admin-list-item) {
+    border-top: 1px solid #dde5ee;
+  }
+}
 </style>

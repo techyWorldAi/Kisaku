@@ -547,6 +547,71 @@ body {
   }
 }
 
+/* Admin workspace visual system */
+.admin-page-shell {
+  background: #f4f7fb;
+  color: #0f2a44;
+}
+
+.admin-page-shell > main {
+  padding-top: 26px;
+  padding-bottom: 40px;
+}
+
+.admin-page-shell > header {
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 1px 0 rgba(15, 42, 68, 0.06);
+}
+
+.admin-page-shell [class*="rounded-2xl"].bg-white {
+  border-radius: 8px;
+  border-color: #dde5ee;
+  box-shadow: 0 4px 18px rgba(15, 42, 68, 0.035);
+}
+
+.admin-page-shell .admin-list-header {
+  min-height: 48px;
+  align-items: center;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.admin-page-shell .admin-list-item {
+  min-height: 82px;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  transition: background-color 160ms ease;
+}
+
+.admin-page-shell .admin-list-item:hover {
+  background: #f8fafc;
+}
+
+.admin-page-shell .admin-list-row {
+  min-height: 52px;
+}
+
+.admin-page-shell .admin-list-row h3 {
+  color: #0f2a44;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.admin-page-shell .admin-list-row p,
+.admin-page-shell .admin-list-row [class*="text-gray-500"] {
+  color: #64748b;
+}
+
+.admin-page-shell .admin-list-row button,
+.admin-page-shell .admin-list-row a {
+  min-height: 36px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
 button,
 input,
 select,
