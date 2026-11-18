@@ -5,6 +5,7 @@ import { computed,ref } from 'vue';import {useRoute,useRouter} from 'vue-router'
 const initialQueryToken = new URL(window.location.href).searchParams.get('token')
   ?? new URL(window.location.href).searchParams.get('reset_token')
   ?? new URL(window.location.href).searchParams.get('invite_token')
+  ?? sessionStorage.getItem('vendorPasswordResetToken')
   ?? '';
 
 const route=useRoute(),router=useRouter();

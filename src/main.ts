@@ -20,6 +20,15 @@ if (fallbackPath) {
   }
   fallbackUrl.pathname = `/${decodedFallbackPath.replace(/^\/+/, '').replace(/%2F/gi, '/')}`;
   fallbackParams.delete('p');
+  const preservedToken = fallbackParams.get('token')
+    ?? fallbackParams.get('reset_token')
+    ?? fallbackParams.get('invite_token');
+  fallbackParams.delete('reset_token');
+  fallbackParams.delete('invite_token');
+  if (preservedToken) {
+    fallbackParams.set('token', preservedToken);
+    sessionStorage.setItem('vendorPasswordResetToken', preservedToken);
+  }
   fallbackUrl.search = fallbackParams.toString();
   window.history.replaceState({}, '', `${fallbackUrl.pathname}${fallbackUrl.search}${fallbackUrl.hash}`);
 }
