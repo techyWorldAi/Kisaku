@@ -10,6 +10,7 @@ import {
   PanelsTopLeft,
   ScrollText,
   ShoppingBasket,
+  Truck,
   UserRoundCog,
   Users,
   X,
@@ -24,9 +25,11 @@ const mobileOpen = ref(false);
 
 const navigation = [
   { label: 'Dashboard', to: '/admin/dashboard', icon: LayoutDashboard },
-  { label: 'Orders', to: '/admin/orders', icon: ClipboardList },
+  { label: 'Orders', to: '/admin/orders', icon: ClipboardList, staffOnly: true },
+  { label: 'Incoming goods', to: '/admin/incoming-goods', icon: Truck, incomingAccess: true },
   { label: 'Sales orders', to: '/admin/sales', icon: ShoppingBasket, salesAccess: true },
   { label: 'Products', to: '/admin/products', icon: Package },
+  { label: 'Vendors', to: '/admin/vendors', icon: Users, vendorAccess: true },
   { label: 'Storefront', to: '/admin/storefront', icon: PanelsTopLeft, adminOnly: true },
   { label: 'Audit logs', to: '/admin/audit-logs', icon: ScrollText, adminOnly: true },
   { label: 'Accounts', to: '/admin/users', icon: Users },
@@ -36,6 +39,9 @@ const visibleNavigation = computed(() =>
   navigation.filter((item) => (
     (!item.adminOnly || authStore.isAdmin)
     && (!item.salesAccess || authStore.canAccessSales)
+    && (!item.vendorAccess || authStore.isAdmin || authStore.isStaff || authStore.isVendorSupport)
+    && (!item.incomingAccess || authStore.isAdmin || authStore.isStaff || authStore.isVendorSupport || authStore.isLogistics)
+    && (!item.staffOnly || authStore.isAdmin || authStore.isStaff)
     && (item.salesAccess || authStore.canAccessAdmin)
   )),
 );

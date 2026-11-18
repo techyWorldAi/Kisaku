@@ -1,0 +1,9 @@
+<script setup lang="ts">
+import { ref, watch } from 'vue';
+const props = defineProps<{ open:boolean; title:string; confirmText?:string }>();
+const emit = defineEmits<{ close:[]; confirm:[reason:string] }>();
+const reason=ref('');
+watch(()=>props.open,(value)=>{ if(value) reason.value=''; });
+</script>
+<template><div v-if="open" class="dialog-backdrop" role="presentation" @click.self="emit('close')"><section class="dialog" role="dialog" aria-modal="true"><h2>{{title}}</h2><slot /><label>Reason<textarea v-model="reason" maxlength="255" required :disabled="false" /></label><div class="actions"><button type="button" class="secondary" @click="emit('close')">Cancel</button><button type="button" class="danger" :disabled="!reason.trim()" @click="emit('confirm',reason.trim())">{{confirmText||'Confirm'}}</button></div></section></div></template>
+<style scoped>.dialog-backdrop{position:fixed;z-index:100;inset:0;display:grid;place-items:center;padding:18px;background:rgba(15,42,68,.42)}.dialog{width:min(440px,100%);padding:22px;border-radius:8px;background:#fff;box-shadow:0 18px 50px rgba(15,42,68,.22)}.dialog h2{margin:0 0 10px;font-size:1.1rem}.dialog label{display:flex;flex-direction:column;gap:7px;margin-top:14px;font-size:.82rem;font-weight:700}.dialog textarea{min-height:90px;padding:10px;border:1px solid #cbd5e1;border-radius:6px}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.actions button{height:40px;padding:0 14px;border-radius:6px;font-weight:750}.secondary{border:1px solid #d6dee7;background:#fff}.danger{border:0;background:#b42318;color:#fff}.danger:disabled{opacity:.55}</style>

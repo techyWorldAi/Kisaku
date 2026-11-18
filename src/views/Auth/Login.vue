@@ -82,6 +82,7 @@
                 :disabled="loading"
               />
             </div>
+            <router-link to="/forgot-password" class="auth-forgot-link">Forgot password?</router-link>
             <button type="submit" class="auth-submit" :disabled="loading">
               {{ loading ? 'Signing in...' : 'Sign in' }}
             </button>
@@ -109,6 +110,10 @@
     </div>
   </main>
 </template>
+
+<style scoped>
+.auth-forgot-link { display: block; margin: -4px 0 10px; color: #075397; font-size: 0.82rem; font-weight: 700; text-align: right; }
+</style>
 
 <script setup lang="ts">
 import { ref } from 'vue';
@@ -169,11 +174,16 @@ async function handleLogin() {
       && !['/login', '/signup'].includes(redirect)
       ? redirect
       : null;
-    const defaultDestination = authResponse.user.role === 'sales_agent'
-      ? '/admin/sales'
-      : authResponse.user.role === 'admin' || authResponse.user.role === 'staff'
-        ? '/admin/dashboard'
-        : '/';
+    const defaultDestination = authResponse.user.role === 'vendor'
+      ? '/vendor'
+      : authResponse.user.role === 'sales_agent'
+        ? '/admin/sales'
+        : authResponse.user.role === 'admin'
+          || authResponse.user.role === 'staff'
+          || authResponse.user.role === 'vendor_support'
+          || authResponse.user.role === 'logistics'
+          ? '/admin/dashboard'
+          : '/';
     await router.push(safeRedirect ?? defaultDestination);
   } catch (err: any) {
     if (err.response?.data?.error) {

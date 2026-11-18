@@ -69,12 +69,7 @@ api.interceptors.response.use(
       }
     }
     
-    // Handle 403 Forbidden (Admin access)
-    if (error.response?.status === 403) {
-      if (!window.location.pathname.includes('/profile')) {
-        window.location.href = '/profile';
-      }
-    }
+    // 403 is role data: components decide whether to show a no-access or suspended-account state.
     
     return Promise.reject(error);
   }
@@ -188,6 +183,11 @@ export interface Product {
   category_id: number;
   category?: Category;
   created_at?: string;
+  status?: 'active' | 'pending' | 'disabled';
+  status_reason?: string | null;
+  vendor_id?: number | null;
+  vendor_code?: string | null;
+  vendor_name?: string | null;
 }
 
 export interface CreateProductRequest {
@@ -809,6 +809,125 @@ export const adminAPI = {
     }
     return response.data;
   },
+};
+
+export interface Vendor {
+  id: number;
+  code: string;
+  business_name: string;
+  contact_name?: string;
+  email: string;
+  phone?: string;
+  status: 'active' | 'suspended';
+  status_reason?: string | null;
+  product_count?: number;
+  created_at?: string;
+}
+
+export interface VendorProduct {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  original_price?: number | null;
+  stock: number;
+  image: string;
+  category_id: number;
+  status: 'active' | 'pending' | 'disabled';
+  status_reason?: string | null;
+  vendor_id?: number | null;
+  vendor_code?: string | null;
+  vendor_name?: string | null;
+}
+
+export interface VendorOrderShare {
+  order_id: number;
+  order_number: string;
+  status: 'pending' | 'confirmed' | 'shipped' | 'received' | 'cancelled';
+  order_status?: string;
+  payment_cleared: boolean;
+  placed_at: string;
+  confirmed_at?: string | null;
+  shipped_at?: string | null;
+  received_at?: string | null;
+  items: Array<{ product_id: number; name: string; image?: string; quantity: number; unit_price: number; line_total: number }>;
+  subtotal: number;
+  vendor_id?: number;
+  vendor_code?: string;
+  business_name?: string;
+}
+
+export interface PaginatedList<T> {
+  items: T[];
+  total: number;
+  page: number;
+  perPage: number;
+  totalPages: number;
+}
+
+function paginatedResponse<T>(response: { data: unknown; headers: Record<string, string> }): PaginatedList<T> {
+  const payload = Array.isArray(response.data)
+    ? response.data
+    : (unwrapResponseData(response.data) as T[]);
+  const header = (name: string) => response.headers[name.toLowerCase()] ?? response.headers[name];
+  return {
+    items: Array.isArray(payload) ? payload : [],
+    total: Number(header('x-total-count') ?? 0),
+    page: Number(header('x-page') ?? 1),
+    perPage: Number(header('x-per-page') ?? 20),
+    totalPages: Number(header('x-total-pages') ?? 1),
+  };
+}
+
+export const vendorAPI = {
+  getDashboard: async () => unwrapResponseData((await api.get('/vendor/dashboard')).data) as {
+    vendor: Vendor;
+    orders: Record<string, number>;
+    products: Record<string, number>;
+  },
+  getProfile: async () => unwrapResponseData((await api.get('/vendor/profile')).data) as Vendor,
+  getProducts: async (params: Record<string, string | number | undefined>) =>
+    paginatedResponse<VendorProduct>(await api.get('/vendor/products', { params }) as never),
+  getProduct: async (id: number) => unwrapResponseData((await api.get(`/vendor/products/${id}`)).data) as VendorProduct,
+  createProduct: async (product: Record<string, unknown>) => unwrapResponseData((await api.post('/vendor/products', product)).data) as VendorProduct,
+  updateProduct: async (id: number, product: Record<string, unknown>) => unwrapResponseData((await api.put(`/vendor/products/${id}`, product)).data) as VendorProduct,
+  deleteProduct: async (id: number) => (await api.delete(`/vendor/products/${id}`)).data,
+  upload: async (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    const response = await api.post('/vendor/uploads', form);
+    return (unwrapResponseData(response.data) as { url: string }).url;
+  },
+  getOrders: async (params: Record<string, string | number | undefined>) =>
+    paginatedResponse<VendorOrderShare>(await api.get('/vendor/orders', { params }) as never),
+  getOrder: async (id: number) => unwrapResponseData((await api.get(`/vendor/orders/${id}`)).data) as VendorOrderShare,
+  updateOrderStatus: async (id: number, status: 'confirmed' | 'shipped') =>
+    unwrapResponseData((await api.put(`/vendor/orders/${id}/status`, { status })).data) as VendorOrderShare,
+};
+
+export const vendorAdminAPI = {
+  getVendors: async (params: Record<string, string | number | undefined>) =>
+    paginatedResponse<Vendor>(await api.get('/admin/vendors', { params }) as never),
+  getVendor: async (id: number) => unwrapResponseData((await api.get(`/admin/vendors/${id}`)).data) as Vendor,
+  createVendor: async (vendor: Record<string, unknown>) => unwrapResponseData((await api.post('/admin/vendors', vendor)).data) as Vendor,
+  updateVendor: async (id: number, vendor: Record<string, unknown>) => unwrapResponseData((await api.put(`/admin/vendors/${id}`, vendor)).data) as Vendor,
+  resendInvite: async (id: number) => (await api.post(`/admin/vendors/${id}/invite`)).data,
+  updateVendorStatus: async (id: number, status: 'active' | 'suspended', reason?: string) =>
+    unwrapResponseData((await api.put(`/admin/vendors/${id}/status`, { status, reason })).data) as Vendor,
+  setProductStatus: async (id: number, status: 'active' | 'disabled', reason?: string) =>
+    unwrapResponseData((await api.put(`/admin/products/${id}/status`, { status, reason })).data) as VendorProduct,
+  deleteProduct: async (id: number) => (await api.delete(`/admin/products/${id}`)).data,
+  getIncoming: async (params: Record<string, string | number | undefined>) =>
+    paginatedResponse<VendorOrderShare>(await api.get('/admin/vendor-orders', { params }) as never),
+  markReceived: async (orderId: number, vendorId: number) =>
+    unwrapResponseData((await api.put(`/admin/orders/${orderId}/vendors/${vendorId}/status`, { status: 'received' })).data),
+};
+
+export const authPasswordAPI = {
+  forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token: string, newPassword: string) => api.post('/auth/reset-password', { token, new_password: newPassword }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.put('/auth/password', { current_password: currentPassword, new_password: newPassword }),
 };
 
 export const normalizePhone = (num: string): string => {

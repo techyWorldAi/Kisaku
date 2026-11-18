@@ -355,9 +355,10 @@ async function updateOrderStatus(orderId: number, status: Order['status']) {
     await orderAPI.updateOrderStatus(orderId, { status });
     // Refresh orders to get updated data
     await fetchOrders();
-  } catch {
+  } catch (error: unknown) {
     console.error('Failed to update order status.');
-    alert('Failed to update order status');
+    const message = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+    alert(message || 'Failed to update order status');
   }
 }
 

@@ -77,10 +77,12 @@
         <!-- Table Header -->
         <div class="px-6 py-4 bg-gray-50 border-b border-gray-200/60">
           <div class="admin-list-header grid grid-cols-12 gap-4 text-sm font-medium text-gray-700 uppercase tracking-wider">
-            <div class="col-span-3">Product</div>
+            <div class="col-span-2">Product</div>
             <div class="col-span-2">Category</div>
-            <div class="col-span-2">Price</div>
-            <div class="col-span-2">Stock</div>
+            <div class="col-span-2">Vendor</div>
+            <div class="col-span-1">Status</div>
+            <div class="col-span-1">Price</div>
+            <div class="col-span-1">Stock</div>
             <div class="col-span-3 text-right">Actions</div>
           </div>
         </div>
@@ -94,7 +96,7 @@
           >
             <div class="admin-list-row grid grid-cols-12 gap-4 items-center">
               <!-- Product Info -->
-              <div class="col-span-3">
+              <div class="col-span-2">
                 <div class="flex items-center space-x-4">
                   <div class="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center overflow-hidden">
                     <img 
@@ -130,14 +132,31 @@
                 <span v-else class="text-sm text-gray-500">No category</span>
               </div>
 
-              <!-- Price -->
+              <!-- Vendor -->
               <div class="col-span-2">
+                <span class="admin-mobile-label">Vendor</span>
+                <span class="text-sm font-semibold text-gray-900">
+                  {{ product.vendor_id ? `${product.vendor_code || ''} ${product.vendor_name || ''}`.trim() : 'Kisaku' }}
+                </span>
+              </div>
+
+              <!-- Status -->
+              <div class="col-span-1">
+                <span class="admin-mobile-label">Status</span>
+                <span class="inline-flex px-2 py-1 rounded-full text-xs font-medium"
+                  :class="product.status === 'disabled' ? 'bg-red-100 text-red-800' : product.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'">
+                  {{ product.status === 'pending' ? 'Waiting for approval' : product.status === 'disabled' ? 'Disabled' : 'Active' }}
+                </span>
+              </div>
+
+              <!-- Price -->
+              <div class="col-span-1">
                 <span class="admin-mobile-label">Price</span>
                 <span class="text-sm font-semibold text-gray-900">Ksh {{ product.price?.toLocaleString() }}</span>
               </div>
 
               <!-- Stock -->
-              <div class="col-span-2">
+              <div class="col-span-1">
                 <span class="admin-mobile-label">Stock</span>
                 <span :class="[
                   'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium',
@@ -151,6 +170,16 @@
 
               <!-- Actions -->
               <div class="col-span-3 flex justify-end space-x-3">
+                <button
+                  v-if="product.vendor_id && product.status !== 'disabled'"
+                  @click="openDisableProduct(product)"
+                  class="flex items-center px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium"
+                >Disable</button>
+                <button
+                  v-if="product.vendor_id && product.status !== 'active'"
+                  @click="relistProduct(product)"
+                  class="flex items-center px-3 py-2 text-green-700 hover:bg-green-50 rounded-lg text-sm font-medium"
+                >{{ product.status === 'pending' ? 'Approve' : 'Relist' }}</button>
                 <button 
                   @click="editProduct(product)"
                   class="flex items-center space-x-1 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200 text-sm font-medium"
@@ -393,15 +422,23 @@
       </div>
     </div>
   </div>
+  <ReasonDialog
+    :open="disableDialogOpen"
+    title="Disable vendor product?"
+    confirm-text="Disable product"
+    @close="disableDialogOpen = false"
+    @confirm="disableProduct"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../store/auth';
-import { getApiErrorMessage, productAPI, uploadAPI } from '../../services/api';
+import { getApiErrorMessage, productAPI, uploadAPI, vendorAdminAPI } from '../../services/api';
 import type { Product, Category, CreateProductRequest } from '../../services/api';
 import AdminSidebar from '../../components/admin/AdminSidebar.vue';
+import ReasonDialog from '../../components/ReasonDialog.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -416,6 +453,8 @@ const editingProductId = ref<number | null>(null);
 const imagePreview = ref<string | null>(null);
 const imageUploading = ref(false);
 const imageUploadError = ref('');
+const disableDialogOpen = ref(false);
+const disableProductId = ref<number | null>(null);
 
 type ProductForm = Omit<CreateProductRequest, 'original_price' | 'rating' | 'review_count'> & {
   original_price: number | null | '';
@@ -486,6 +525,32 @@ function editProduct(product: Product) {
   }
   
   showEditModal.value = true;
+}
+
+function openDisableProduct(product: Product) {
+  disableProductId.value = product.id;
+  disableDialogOpen.value = true;
+}
+
+async function disableProduct(reason: string) {
+  if (!disableProductId.value) return;
+  try {
+    await vendorAdminAPI.setProductStatus(disableProductId.value, 'disabled', reason);
+    disableDialogOpen.value = false;
+    disableProductId.value = null;
+    await fetchProducts();
+  } catch (error: unknown) {
+    alert(getApiErrorMessage(error, 'Product could not be disabled.'));
+  }
+}
+
+async function relistProduct(product: Product) {
+  try {
+    await vendorAdminAPI.setProductStatus(product.id, 'active');
+    await fetchProducts();
+  } catch (error: unknown) {
+    alert(getApiErrorMessage(error, 'Product could not be relisted.'));
+  }
 }
 
 function updateImagePreview() {

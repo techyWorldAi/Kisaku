@@ -80,7 +80,10 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => user.value?.role === 'admin');
   const isStaff = computed(() => user.value?.role === 'staff');
   const isSalesAgent = computed(() => user.value?.role === 'sales_agent');
-  const canAccessAdmin = computed(() => isAdmin.value || isStaff.value);
+  const isVendor = computed(() => user.value?.role === 'vendor');
+  const isVendorSupport = computed(() => user.value?.role === 'vendor_support');
+  const isLogistics = computed(() => user.value?.role === 'logistics');
+  const canAccessAdmin = computed(() => isAdmin.value || isStaff.value || isVendorSupport.value || isLogistics.value);
   const canAccessSales = computed(() => isAdmin.value || isSalesAgent.value);
   const isCustomer = computed(() => user.value?.role === 'customer');
 
@@ -94,6 +97,9 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin,
     isStaff,
     isSalesAgent,
+    isVendor,
+    isVendorSupport,
+    isLogistics,
     canAccessAdmin,
     canAccessSales,
     isCustomer,

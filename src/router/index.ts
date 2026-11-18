@@ -19,6 +19,43 @@ const router = createRouter({
       meta: { requiresGuest: true }
     },
     {
+      path: '/forgot-password',
+      name: 'ForgotPassword',
+      component: () => import('../views/Auth/ForgotPassword.vue'),
+      meta: { requiresGuest: true }
+    },
+    {
+      path: '/reset-password',
+      name: 'ResetPassword',
+      component: () => import('../views/Auth/ResetPassword.vue'),
+      meta: { requiresGuest: true }
+    },
+    {
+      path: '/vendor/set-password',
+      name: 'VendorSetPassword',
+      component: () => import('../views/Auth/VendorSetPassword.vue'),
+      meta: { requiresGuest: true }
+    },
+    {
+      path: '/access-denied',
+      name: 'AccessDenied',
+      component: () => import('../views/Auth/AccessDenied.vue')
+    },
+    {
+      path: '/vendor',
+      component: () => import('../views/vendor/VendorLayout.vue'),
+      meta: { requiresAuth: true, roles: ['vendor'] },
+      children: [
+        { path: '', name: 'VendorDashboard', component: () => import('../views/vendor/Dashboard.vue') },
+        { path: 'products', name: 'VendorProducts', component: () => import('../views/vendor/Products.vue') },
+        { path: 'products/new', name: 'VendorProductNew', component: () => import('../views/vendor/ProductForm.vue') },
+        { path: 'products/:id/edit', name: 'VendorProductEdit', component: () => import('../views/vendor/ProductForm.vue') },
+        { path: 'orders', name: 'VendorOrders', component: () => import('../views/vendor/Orders.vue') },
+        { path: 'orders/:id', name: 'VendorOrderDetail', component: () => import('../views/vendor/OrderDetail.vue') },
+        { path: 'profile', name: 'VendorProfile', component: () => import('../views/vendor/Profile.vue') },
+      ]
+    },
+    {
       path: '/signup',
       name: 'Signup',
       component: () => import('../views/Auth/Signup.vue'),
@@ -94,6 +131,24 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/admin/vendors',
+      name: 'AdminVendors',
+      component: () => import('../views/admin/Vendors.vue'),
+      meta: { requiresAuth: true, roles: ['staff', 'admin', 'vendor_support'] }
+    },
+    {
+      path: '/admin/vendors/:id',
+      name: 'AdminVendorDetail',
+      component: () => import('../views/admin/VendorDetail.vue'),
+      meta: { requiresAuth: true, roles: ['staff', 'admin', 'vendor_support'] }
+    },
+    {
+      path: '/admin/incoming-goods',
+      name: 'AdminIncomingGoods',
+      component: () => import('../views/admin/IncomingGoods.vue'),
+      meta: { requiresAuth: true, roles: ['staff', 'admin', 'vendor_support', 'logistics'] }
+    },
+    {
       path: '/admin/users',
       name: 'AdminUsers',
       component: () => import('../views/admin/Users.vue'),
@@ -141,14 +196,20 @@ router.beforeEach(async (to) => {
   }
   if (to.meta.requiresGuest && authStore.isAuthenticated) {
     return safeRedirect ?? (
-      authStore.isSalesAgent
-        ? '/admin/sales'
-        : authStore.canAccessAdmin
-          ? '/admin/dashboard'
-          : '/'
+      authStore.isVendor
+        ? '/vendor'
+        : authStore.isSalesAgent
+          ? '/admin/sales'
+          : authStore.canAccessAdmin
+            ? '/admin/dashboard'
+            : '/'
     );
   }
-  if (to.meta.requiresStaff && !authStore.canAccessAdmin) return '/profile';
+  if (to.meta.roles && Array.isArray(to.meta.roles)) {
+    const allowedRoles = to.meta.roles as string[];
+    if (!allowedRoles.includes(authStore.user?.role ?? '')) return '/access-denied';
+  }
+  if (to.meta.requiresStaff && !authStore.canAccessAdmin) return '/access-denied';
   if (to.meta.requiresAdmin && !authStore.isAdmin) return '/profile';
   if (to.meta.requiresSales && !authStore.canAccessSales) return '/profile';
 });
