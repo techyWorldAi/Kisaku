@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { computed,ref } from 'vue';import {useRoute,useRouter} from 'vue-router';import {authPasswordAPI} from '../../services/api';
+
+// Capture before route/composition lifecycle work or auth redirects can alter the URL.
+const initialQueryToken = new URL(window.location.href).searchParams.get('token')
+  ?? new URL(window.location.href).searchParams.get('reset_token')
+  ?? new URL(window.location.href).searchParams.get('invite_token')
+  ?? '';
+
 const route=useRoute(),router=useRouter();
 const token=computed(()=>{
   const queryNames=['token','reset_token','invite_token'];
   for(const name of queryNames){
     if(typeof route.query[name]==='string'&&route.query[name]) return route.query[name] as string;
   }
+  if(initialQueryToken) return initialQueryToken;
   const hash=new URLSearchParams(window.location.hash.replace(/^#/,'').replace(/^\?/,''));
   for(const name of queryNames){const value=hash.get(name);if(value)return value}
   return '';

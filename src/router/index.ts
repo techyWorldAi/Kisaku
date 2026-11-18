@@ -28,13 +28,13 @@ const router = createRouter({
       path: '/reset-password',
       name: 'ResetPassword',
       component: () => import('../views/Auth/ResetPassword.vue'),
-      meta: { requiresGuest: true }
+      meta: { publicRoute: true }
     },
     {
       path: '/vendor/set-password',
       name: 'VendorSetPassword',
       component: () => import('../views/Auth/VendorSetPassword.vue'),
-      meta: { requiresGuest: true }
+      meta: { publicRoute: true }
     },
     {
       path: '/access-denied',
@@ -178,6 +178,8 @@ const router = createRouter({
 // Navigation guards
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();
+
+  if (to.meta.publicRoute) return true;
   
   if (!authStore.isAuthenticated && localStorage.getItem('authToken')) {
     await authStore.checkAuth();
