@@ -127,6 +127,18 @@ const router = createRouter({
       component: () => import('../views/ContactUs.vue'),
     },
     {
+      path: '/privacy-policy',
+      name: 'PrivacyPolicy',
+      component: () => import('../views/LegalPage.vue'),
+      props: { kind: 'privacy' },
+    },
+    {
+      path: '/terms',
+      name: 'TermsOfService',
+      component: () => import('../views/LegalPage.vue'),
+      props: { kind: 'terms' },
+    },
+    {
       path: '/cart',
       name: 'Cart',
       component: () => import('../views/Cart.vue'),

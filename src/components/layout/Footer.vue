@@ -17,6 +17,8 @@
         <router-link to="/about">About Kisaku</router-link>
         <router-link to="/shop">Our products</router-link>
         <router-link to="/contact">Contact information</router-link>
+        <router-link to="/privacy-policy">Privacy Policy</router-link>
+        <router-link to="/terms">Terms of Service</router-link>
       </nav>
 
       <nav class="footer-column" aria-label="Customer service">

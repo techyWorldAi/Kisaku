@@ -8,6 +8,7 @@ const route = useRoute();
 const hideFooter = computed(() => (
   route.path === '/login'
   || route.path === '/signup'
+  || ['/', '/shop', '/about', '/contact', '/privacy-policy', '/terms'].includes(route.path)
   || route.path.startsWith('/vendor')
   || route.path.startsWith('/admin')
 ));
