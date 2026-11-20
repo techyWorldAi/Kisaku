@@ -53,15 +53,23 @@
           <h2 class="text-3xl font-bold text-gray-900">Products</h2>
           <p class="text-gray-600 mt-2">Manage your product catalog and inventory</p>
         </div>
-        <button 
-          @click="showAddModal = true"
-          class="group flex items-center space-x-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-yellow-500/25 hover:scale-105 transition-all duration-300 font-semibold"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-          </svg>
-          <span>Add Product</span>
-        </button>
+        <div v-if="authStore.isAdmin || authStore.isStaff || authStore.isVendorSupport" class="flex flex-wrap gap-3">
+          <router-link
+            :to="{ path: '/admin/products/upload', query: route.query.vendor ? { vendor: route.query.vendor } : undefined }"
+            class="flex items-center space-x-2 border border-gray-300 bg-white text-gray-700 px-6 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-colors duration-300 font-semibold"
+          >
+            <span>Upload Products</span>
+          </router-link>
+          <button
+            @click="showAddModal = true"
+            class="group flex items-center space-x-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-yellow-500/25 hover:scale-105 transition-all duration-300 font-semibold"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            <span>Add Product</span>
+          </button>
+        </div>
       </div>
 
       <!-- Loading State -->
@@ -433,7 +441,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../store/auth';
 import { getApiErrorMessage, productAPI, uploadAPI, vendorAdminAPI } from '../../services/api';
 import type { Product, Category, CreateProductRequest } from '../../services/api';
@@ -442,6 +450,7 @@ import ReasonDialog from '../../components/ReasonDialog.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 
 const products = ref<Product[]>([]);
 const categories = ref<Category[]>([]);

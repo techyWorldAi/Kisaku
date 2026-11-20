@@ -478,6 +478,16 @@ export const productAPI = {
     return response.data;
   },
 
+  getRelatedProducts: async (id: number, limit = 8): Promise<Product[]> => {
+    if (isDemoMode()) return [];
+
+    const response = await api.get(`/products/${id}/related`, { params: { limit } });
+    if (!Array.isArray(response.data)) {
+      throw new Error('The related products endpoint returned an unsupported response.');
+    }
+    return response.data as Product[];
+  },
+
   // Admin product endpoints (require admin auth)
   getProducts: async (): Promise<Product[]> => {
     if (isDemoMode()) return getDemoProducts();
@@ -840,6 +850,30 @@ export interface VendorProduct {
   vendor_name?: string | null;
 }
 
+export interface ProductImportRow {
+  row: number;
+  action: 'create' | 'update' | 'duplicate' | 'error';
+  name: string | null;
+  product_id: number | null;
+  errors: string[];
+  imported?: boolean;
+}
+
+export interface ProductImportData {
+  mode: 'preview' | 'import';
+  imported: boolean;
+  file_name: string;
+  total_rows: number;
+  summary: { create: number; update: number; duplicate: number; error: number };
+  ignored_columns?: string[];
+  rows: ProductImportRow[];
+}
+
+export interface ProductImportResponse {
+  message: string;
+  data: ProductImportData;
+}
+
 export interface VendorOrderShare {
   order_id: number;
   order_number: string;
@@ -898,6 +932,21 @@ export const vendorAPI = {
     const response = await api.post('/vendor/uploads', form);
     return (unwrapResponseData(response.data) as { url: string }).url;
   },
+  downloadImportTemplate: async (format: 'xlsx' | 'csv') => {
+    const response = await api.get('/vendor/products/import/template', {
+      params: { format },
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  },
+  importProducts: async (file: File, allowDuplicates: boolean, mode: 'preview' | 'import') => {
+    const form = new FormData();
+    form.append('file', file);
+    const response = await api.post('/vendor/products/import', form, {
+      params: { ...(mode === 'import' ? { mode: 'import' } : {}), ...(allowDuplicates ? { allow_duplicates: 'true' } : {}) },
+    });
+    return response.data as ProductImportResponse;
+  },
   getOrders: async (params: Record<string, string | number | undefined>) =>
     paginatedResponse<VendorOrderShare>(await api.get('/vendor/orders', { params }) as never),
   getOrder: async (id: number) => unwrapResponseData((await api.get(`/vendor/orders/${id}`)).data) as VendorOrderShare,
@@ -908,6 +957,22 @@ export const vendorAPI = {
 export const vendorAdminAPI = {
   getVendors: async (params: Record<string, string | number | undefined>) =>
     paginatedResponse<Vendor>(await api.get('/admin/vendors', { params }) as never),
+  downloadImportTemplate: async (format: 'xlsx' | 'csv') => {
+    const response = await api.get('/admin/products/import/template', {
+      params: { format },
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  },
+  importProducts: async (file: File, vendor: string, allowDuplicates: boolean, mode: 'preview' | 'import') => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('vendor', vendor);
+    const response = await api.post('/admin/products/import', form, {
+      params: { ...(mode === 'import' ? { mode: 'import' } : {}), ...(allowDuplicates ? { allow_duplicates: 'true' } : {}) },
+    });
+    return response.data as ProductImportResponse;
+  },
   getVendor: async (id: number) => unwrapResponseData((await api.get(`/admin/vendors/${id}`)).data) as Vendor,
   createVendor: async (vendor: Record<string, unknown>) => unwrapResponseData((await api.post('/admin/vendors', vendor)).data) as Vendor,
   updateVendor: async (id: number, vendor: Record<string, unknown>) => unwrapResponseData((await api.put(`/admin/vendors/${id}`, vendor)).data) as Vendor,

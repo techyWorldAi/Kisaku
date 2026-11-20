@@ -148,25 +148,20 @@
         </div>
       </div>
 
-      <!-- Related Products (Optional) -->
-      <div class="mt-12">
-        <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-6">You Might Also Like</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <!-- Related products would go here -->
-        </div>
-      </div>
+      <RelatedProducts :product-id="currentProductId" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../store/auth';
 import { useCartStore } from '../store/cart';
 import { productAPI } from '../services/api';
 import type { Product } from '../services/api';
 import Header from '../components/layout/Menu.vue';
+import RelatedProducts from '../components/product/RelatedProducts.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -178,7 +173,8 @@ const loading = ref(true);
 const showSuccess = ref(false);
 const imageUnavailable = ref(false);
 
-const productId = parseInt(route.params.id as string);
+const currentProductId = computed(() => Number(route.params.id));
+let productRequestId = 0;
 
 function addProductToCart() {
   if (!product.value || product.value.stock <= 0) {
@@ -220,20 +216,30 @@ function buyNow() {
   void router.push('/checkout');
 }
 
-async function fetchProduct() {
+async function fetchProduct(id: number) {
+  const requestId = ++productRequestId;
+  product.value = null;
+  imageUnavailable.value = false;
+  showSuccess.value = false;
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    loading.value = false;
+    return;
+  }
+
   try {
     loading.value = true;
-    const productData = await productAPI.getPublicProduct(productId);
-    product.value = productData;
+    const productData = await productAPI.getPublicProduct(id);
+    if (requestId === productRequestId) product.value = productData;
   } catch (error) {
     console.error('Failed to fetch product:', error);
-    product.value = null;
+    if (requestId === productRequestId) product.value = null;
   } finally {
-    loading.value = false;
+    if (requestId === productRequestId) loading.value = false;
   }
 }
 
-onMounted(() => {
-  fetchProduct();
-});
+watch(() => route.params.id, (id) => {
+  const numericId = Number(id);
+  void fetchProduct(numericId);
+}, { immediate: true });
 </script>

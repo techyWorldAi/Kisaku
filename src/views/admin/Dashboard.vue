@@ -7,6 +7,7 @@ import {
   Boxes,
   ClipboardList,
   Package,
+  FileUp,
   Search,
   ShoppingCart,
   Users,
@@ -165,6 +166,14 @@ onMounted(() => {
           <router-link to="/admin/products" class="primary-link">
             <Package :size="17" />
             Manage products
+          </router-link>
+          <router-link
+            v-if="authStore.isAdmin || authStore.isStaff || authStore.isVendorSupport"
+            to="/admin/products/upload"
+            class="primary-link"
+          >
+            <FileUp :size="17" />
+            Upload products
           </router-link>
           <router-link v-if="authStore.isAdmin" to="/admin/storefront" class="primary-link">
             <Boxes :size="17" />

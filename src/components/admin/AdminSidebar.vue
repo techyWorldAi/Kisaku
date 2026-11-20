@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   ClipboardList,
+  FileUp,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -29,6 +30,7 @@ const navigation = [
   { label: 'Incoming goods', to: '/admin/incoming-goods', icon: Truck, incomingAccess: true },
   { label: 'Sales orders', to: '/admin/sales', icon: ShoppingBasket, salesAccess: true },
   { label: 'Products', to: '/admin/products', icon: Package },
+  { label: 'Upload products', to: '/admin/products/upload', icon: FileUp, uploadAccess: true },
   { label: 'Vendors', to: '/admin/vendors', icon: Users, vendorAccess: true },
   { label: 'Storefront', to: '/admin/storefront', icon: PanelsTopLeft, adminOnly: true },
   { label: 'Audit logs', to: '/admin/audit-logs', icon: ScrollText, adminOnly: true },
@@ -42,6 +44,7 @@ const visibleNavigation = computed(() =>
     && (!item.vendorAccess || authStore.isAdmin || authStore.isStaff || authStore.isVendorSupport)
     && (!item.incomingAccess || authStore.isAdmin || authStore.isStaff || authStore.isVendorSupport || authStore.isLogistics)
     && (!item.staffOnly || authStore.isAdmin || authStore.isStaff)
+    && (!item.uploadAccess || authStore.isAdmin || authStore.isStaff || authStore.isVendorSupport)
     && (item.salesAccess || authStore.canAccessAdmin)
   )),
 );
@@ -89,7 +92,7 @@ function signOut() {
         :key="item.to"
         :to="item.to"
         class="admin-nav-link"
-        :class="{ 'nav-active': $route.fullPath === item.to }"
+        :class="{ 'nav-active': $route.path === item.to.split('?')[0] }"
         @click="mobileOpen = false"
       >
         <component :is="item.icon" :size="18" />

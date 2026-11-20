@@ -48,6 +48,7 @@ const router = createRouter({
       children: [
         { path: '', name: 'VendorDashboard', component: () => import('../views/vendor/Dashboard.vue') },
         { path: 'products', name: 'VendorProducts', component: () => import('../views/vendor/Products.vue') },
+        { path: 'products/upload', name: 'VendorProductUpload', component: () => import('../views/ProductUpload.vue'), props: { mode: 'vendor' }, meta: { requiresAuth: true, roles: ['vendor'] } },
         { path: 'products/new', name: 'VendorProductNew', component: () => import('../views/vendor/ProductForm.vue') },
         { path: 'products/:id/edit', name: 'VendorProductEdit', component: () => import('../views/vendor/ProductForm.vue') },
         { path: 'orders', name: 'VendorOrders', component: () => import('../views/vendor/Orders.vue') },
@@ -78,6 +79,13 @@ const router = createRouter({
       name: 'AdminProducts',
       component: () => import('../views/admin/Products.vue'),
       meta: { requiresAuth: true, requiresStaff: true }
+    },
+    {
+      path: '/admin/products/upload',
+      name: 'AdminProductUpload',
+      component: () => import('../views/ProductUpload.vue'),
+      props: { mode: 'admin' },
+      meta: { requiresAuth: true, roles: ['staff', 'admin', 'vendor_support'] }
     },
     {
       path: '/admin/storefront',
