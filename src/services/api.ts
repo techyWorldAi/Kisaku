@@ -97,6 +97,10 @@ export interface AuthResponse {
   expires_at: number;
 }
 
+export interface GoogleLoginRequest {
+  credential: string;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -412,6 +416,14 @@ export const authAPI = {
       console.error('API login request failed.');
       throw error;
     }
+  },
+
+  googleLogin: async (request: GoogleLoginRequest): Promise<AuthResponse> => {
+    if (isDemoMode()) {
+      throw new Error('Google sign-in requires the live API. Set VITE_DEMO_MODE=false and restart Vite.');
+    }
+    const response = await api.post('/auth/google', request);
+    return response.data.data;
   },
 
   signup: async (userData: SignupRequest): Promise<AuthResponse> => {

@@ -95,15 +95,7 @@
           </form>
 
           <div class="auth-provider-divider"><span>or sign up with</span></div>
-          <button type="button" class="auth-google-button" @click="showGoogleUnavailable">
-            <svg class="auth-google-icon" viewBox="0 0 48 48" aria-hidden="true">
-              <path fill="#4285F4" d="M43.6 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11c-.5 2.7-2 5-4.4 6.5v5.4h7.1c4.2-3.9 6.6-9.6 6.6-15.9z" />
-              <path fill="#34A853" d="M24 44c5.9 0 10.9-2 14.5-5.5l-7.1-5.4c-2 1.3-4.5 2.1-7.4 2.1-5.7 0-10.5-3.8-12.2-8.9H4.4v5.6C8 36.8 15.3 44 24 44z" />
-              <path fill="#FBBC05" d="M11.8 26.3c-.4-1.3-.6-2.7-.6-4.2s.2-2.9.6-4.2v-5.6H4.4C2.9 15.2 2 19.2 2 22.1s.9 6.9 2.4 9.8l7.4-5.6z" />
-              <path fill="#EA4335" d="M24 8.9c3.2 0 6.1 1.1 8.3 3.2l6.2-6.2C34.7 2.3 29.8 0 24 0 15.3 0 8 4.8 4.4 12.3l7.4 5.6C13.5 12.8 18.3 8.9 24 8.9z" />
-            </svg>
-            Sign up with Google
-          </button>
+          <div ref="googleButton" class="auth-google-button-container" aria-label="Sign up with Google"></div>
           <p v-if="googleMessage" class="auth-provider-message" role="status">{{ googleMessage }}</p>
 
           <p class="auth-form-footer">
@@ -118,10 +110,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../store/auth';
 import type { SignupRequest } from '../../services/api';
+import { loadGoogleIdentityServices } from '../../services/googleAuth';
 
 const form = ref({
   name: '',
@@ -134,12 +127,62 @@ const loading = ref(false);
 const error = ref('');
 const success = ref('');
 const googleMessage = ref('');
+const googleButton = ref<HTMLElement | null>(null);
 
 const authStore = useAuthStore();
 const router = useRouter();
 
-function showGoogleUnavailable() {
-  googleMessage.value = 'Google sign-up is not set up yet. Please create your account with the form above.';
+onMounted(async () => {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+  if (!clientId) {
+    googleMessage.value = 'Google sign-up is not configured.';
+    return;
+  }
+
+  try {
+    await loadGoogleIdentityServices();
+    if (!googleButton.value || !window.google) return;
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleCredential,
+    });
+    window.google.accounts.id.renderButton(googleButton.value, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: 'signup_with',
+      shape: 'rectangular',
+      width: 320,
+    });
+  } catch (err: unknown) {
+    googleMessage.value = err instanceof Error ? err.message : 'Google sign-up could not be loaded.';
+  }
+});
+
+async function handleGoogleCredential(response: { credential: string }) {
+  if (loading.value) return;
+  loading.value = true;
+  error.value = '';
+  success.value = '';
+  googleMessage.value = '';
+
+  try {
+    await authStore.googleLogin({ credential: response.credential });
+    success.value = 'Signed in with Google. Redirecting...';
+    setTimeout(() => {
+      if (authStore.canAccessAdmin) {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/profile');
+      }
+    }, 800);
+  } catch (err: any) {
+    googleMessage.value = err.response?.data?.error
+      || err.message
+      || 'Google sign-up failed. Please try again.';
+  } finally {
+    loading.value = false;
+  }
 }
 
 async function handleSignup() {
@@ -208,3 +251,7 @@ async function handleSignup() {
   }
 }
 </script>
+
+<style scoped>
+.auth-google-button-container { display: flex; justify-content: center; min-height: 44px; }
+</style>

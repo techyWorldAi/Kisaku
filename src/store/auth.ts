@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { User, LoginRequest, SignupRequest, AuthResponse } from '../services/api';
+import type { User, LoginRequest, SignupRequest, GoogleLoginRequest, AuthResponse } from '../services/api';
 import { authAPI } from '../services/api';
 
 export const useAuthStore = defineStore('auth', () => {
@@ -47,6 +47,17 @@ export const useAuthStore = defineStore('auth', () => {
   const signup = async (userData: SignupRequest): Promise<AuthResponse> => {
     try {
       const authResponse = await authAPI.signup(userData);
+      setAuth(authResponse.token, authResponse.user);
+      return authResponse;
+    } catch (error: unknown) {
+      clearAuth();
+      throw error;
+    }
+  };
+
+  const googleLogin = async (request: GoogleLoginRequest): Promise<AuthResponse> => {
+    try {
+      const authResponse = await authAPI.googleLogin(request);
       setAuth(authResponse.token, authResponse.user);
       return authResponse;
     } catch (error: unknown) {
@@ -105,6 +116,7 @@ export const useAuthStore = defineStore('auth', () => {
     isCustomer,
     login,
     signup,
+    googleLogin,
     logout,
     checkAuth,
   };
