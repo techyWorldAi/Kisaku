@@ -16,7 +16,7 @@
         <h2>Company</h2>
         <router-link to="/about">About Kisaku</router-link>
         <router-link to="/shop">Our products</router-link>
-        <router-link to="/about">Contact information</router-link>
+        <router-link to="/contact">Contact information</router-link>
       </nav>
 
       <nav class="footer-column" aria-label="Customer service">

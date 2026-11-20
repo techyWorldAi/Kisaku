@@ -32,7 +32,7 @@
             <Package :size="18" aria-hidden="true" />
             <span>My orders</span>
           </button>
-          <router-link to="/about">
+          <router-link to="/contact">
             <Headphones :size="18" aria-hidden="true" />
             <span>Help &amp; support</span>
           </router-link>
@@ -50,7 +50,7 @@
               <h1>My Account Dashboard</h1>
               <p>Manage your orders, addresses and preferences all in one place.</p>
             </div>
-            <router-link class="account-help-card" to="/about">
+            <router-link class="account-help-card" to="/contact">
               <Headset :size="28" aria-hidden="true" />
               <span><strong>Need help?</strong><small>Our support team is here for you.</small></span>
               <span class="help-contact">Contact us</span>
@@ -314,7 +314,7 @@
           <section class="account-panel settings-panel">
             <h2>Personal information</h2>
             <dl><div><dt>Full name</dt><dd>{{ authStore.user?.name }}</dd></div><div><dt>Email address</dt><dd>{{ authStore.user?.email }}</dd></div><div><dt>Account type</dt><dd class="capitalize">{{ authStore.user?.role }}</dd></div><div><dt>Member since</dt><dd>{{ formatDate(authStore.user?.created_at) }}</dd></div></dl>
-            <p class="settings-note">To update your account information or password, please <router-link to="/about">contact our support team</router-link>.</p>
+            <p class="settings-note">To update your account information or password, please <router-link to="/contact">contact our support team</router-link>.</p>
           </section>
         </template>
 

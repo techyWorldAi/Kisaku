@@ -33,7 +33,7 @@ const menuItems = [
   { label: 'Best Sellers', to: '/shop' },
   { label: 'Brands', to: '/shop' },
   { label: 'About Us', to: '/about' },
-  { label: 'Contact Us', to: '/about' },
+  { label: 'Contact Us', to: '/contact' },
 ];
 
 const router = useRouter();
@@ -360,7 +360,7 @@ onUnmounted(() => {
           <router-link class="header-action desktop-action" to="/track-order" @click="closeOverlays">
             Track order
           </router-link>
-          <router-link class="header-action desktop-action" to="/about" @click="closeOverlays">
+          <router-link class="header-action desktop-action" to="/contact" @click="closeOverlays">
             Help
           </router-link>
           <div
@@ -421,7 +421,7 @@ onUnmounted(() => {
               <p v-else class="notification-popover-message">No order updates yet.</p>
               <footer class="notification-popover-footer">
                 <router-link to="/orders" @click="closeOverlays">View all orders</router-link>
-                <router-link to="/about" @click="closeOverlays">Contact support</router-link>
+                <router-link to="/contact" @click="closeOverlays">Contact support</router-link>
               </footer>
             </section>
           </div>

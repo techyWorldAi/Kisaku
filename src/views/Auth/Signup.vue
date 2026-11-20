@@ -11,7 +11,7 @@
         </router-link>
         <div class="auth-brand-support">
           <span aria-hidden="true">Need help?</span>
-          <a href="/about">Contact support &rarr;</a>
+          <a href="/contact">Contact support &rarr;</a>
         </div>
         <div class="auth-brand-message">
           <h1>Shop smart.<br />Live <span>better</span></h1>
